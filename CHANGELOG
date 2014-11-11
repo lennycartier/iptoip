@@ -1,0 +1,107 @@
+12/12/2001
+	- 0.3.0 ( devel )
+	- add udp/tcp support ( Thx Florin Grad )
+	- change verbose mode
+	  * now an update line is dropped for every forward we add
+	  * should me a lot clearer than before with some cosmetic changes
+	  * remove redundant displaying
+	- fix usage of alternate config file
+	  * now we can use "iptoip file.xml" we don't need to do "iptoip ./file.xml"
+	    as before
+	- update man/doc pages
+
+11/11/2001
+	- 0.2.0
+	- remove awful text displayed in syslog messages
+	- simples manpages but exists
+	- remove unused <total> tag from config file	
+
+06/10/2001
+	- fix inline option by moving setup of the config file location
+
+09/09/2001
+	- 0.1.7
+	- major fixes :
+		* multiple configuration now works
+		* inline file enable ( use --file ./xxxxx )
+	- use $j variable to receive conf number and to repeat ipvsadm update
+	  against several conf
+	- fix usage of --file by moving "my $xmlconf = XMLin($xmlarg);" after
+	  "GetOptions" section
+	- disable 'strict' directive for the moment
+
+10/07/2001
+	- usage of 'strict' directive
+
+04/07/2001 
+	- 0.1.6
+	- usage of <total> tag is now deprecated, number of <conf> tags are now parsed
+	- check if every <conf> opened is really closed
+
+02/07/2001
+	- reorganize xml_update code
+	- go for 0.1.5.1 devel version, now 0.1.x are stable and 0.1.x.x devel
+	
+30/06/2001
+	- reorganize code, now only one sub xml_update
+	- all tests regarding unique or multiple configurations are
+	done in this sub now.
+	- change main function ( suppress test, suppress obsolete sub names )
+
+17/05/2001
+	- v0.1.5
+	- fixed usage of --file option
+	- revised README
+
+16/05/2001
+	- fixed weight extraction when there's only one config
+
+15/04/2001
+	- v0.1.4
+	- add "weigth" function of ipvsadm with default value of 1 for wlc & wrr
+	- fix scheduling displaying in comments()
+	- add clean transmission to update_ipvs()
+
+10/04/2001
+	- v0.1.3
+
+09/04/2001
+	- add ability to choose the scheduling method
+	- add displaying of scheduling method in comments()
+
+04/04/2001
+	- v0.1.2
+	- fixes order of table updating (thanks to Phillipe Libat)
+	- added an initscript also made by Philippe to the rpm
+
+06/03/2001
+	- v0.1.1
+	- move clean_table() sub to the main part otherwise
+	we clean everything even there is nothing to do :)
+	- update README	
+
+05/03/2001
+	- start using XML conf in updating process
+	- crappy fix for cases when there is only on conf :)
+
+05/03/2001
+	- added multiple conf file in XML
+	- design parsing of conf file
+
+03/03/2001
+	- v0.1.0
+	- everything else than an ip is now return in $ip as "-- none --"
+	- added syslog ability if SYSLOG_OUT is set in confile
+	- syslogs are for failure when ip is private and for successful update
+	- fix real usage of $PORT in update_ipvs()
+	- suppress "roro" text :)
+	- added README and TODO
+	
+20/02/2001
+	- added some docs
+	- created website
+
+18/02/2001
+	- start to add inline options
+	- added verbosity
+	- fix test if ip is updatable

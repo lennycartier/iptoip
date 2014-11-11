@@ -1,0 +1,54 @@
+iptoip
+
+(c) Lenny Cartier <l.cartier@gmx.net> / http://iptoip.sourceforge.net
+Licensed under the terms of the GNU GPL (see COPYING)
+
+iptoip is a perl script to help maintaining an ipvsadm table on a non fixed 
+ip adress or an intermitent connection.
+
+USAGE :
+
+- First you have to define in your router firewall config a listening port,
+for example the http port (80) :
+      ipchains -A input  -i $EXTIF -p tcp -d $ANY 80 -j ACCEPT
+don't ask me for firewall rules, I'm not an expert. $EXTIF is your external
+interface, maybe ppp0 and $ANY is a range of computers in your private 
+network but can be replaced (I think it should !) by a single ip adress.
+
+- Next edit /etc/iptoip.xml to reflect wich port you want to forward to 
+which computer. This xml file shoulf be well documented so I hope you'll
+understand it :)
+
+	* weight = is the weight of the server up to 65536
+	* scheduler = is the scheduler/load balancing method to use
+	* origin = is where the connections are coming to
+	* destination = is where the connections are going
+	* port = ...if you ask...
+	* iface = the external interface
+	* nocheck = to check or not ?
+	* verbose = verbose or no ?
+	* syslog = use syslog ?
+
+- If you want to use another file than /etc/iptoip.xml then use the -f|--file 
+option as :
+
+	./iptoip --file toto.xml
+	or
+	./iptoip -f toto.xml
+
+- When your ip changes on $EXTIF the ipvasdm table is not coherent, the
+only thing you have to do is to launch iptoip. A good idea is to put it 
+at the end of your reconnect script.
+
+- You must specify which kind of scheduling method you want to use
+for load balancing. You can use rr,wlc,wrr,lc.
+Alternatively for weighted schedulers (wlc, wrr) you can specify a weight 
+value for the target server. The range is 2 to 65535. The default value is
+set to 1 ( _needed_ to have a correct ipvsadm table).
+
+- You must choose between udp and tcp protocol with the <protocol>[u|t]</protocol> tag.
+
+BUGS :
+- Feel free to send bugs report and suggestions to l.cartier@gmx.net
+
+# revised 12/12/2001
