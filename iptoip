@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# iptoip,v 0.3.0 ( devel )
+# iptoip,v 0.3.0 ( devek )
 #
 # Copyright (C) 2001 Lenny Cartier (l.cartier@free.fr)
 #
@@ -71,47 +71,62 @@ END
 
 if ( $xmlarg eq "" ) { $xmlarg = "/etc/iptoip.xml" };
 
-my $xmlconf = XMLin($xmlarg);
+# NPG
+# Array-ize everything
+my $xs = XML::Simple->new(ForceArray => 1);
+my $xmlconf = $xs->XMLin($xmlarg);
 
 sub read_conf {
-
-	$BYPASS_CHECK_MODE = $xmlconf->{nocheck};
-	$SYSLOG_OUT =  $xmlconf->{syslog};
-	$VERBOSE = $xmlconf->{verbose};
-	$IFACE = $xmlconf->{iface};
-
+	$BYPASS_CHECK_MODE = $xmlconf->{nocheck}->[0];
+	$SYSLOG_OUT =  $xmlconf->{syslog}->[0];
+	$VERBOSE = $xmlconf->{verbose}->[0];
+	$IFACE = $xmlconf->{iface}->[0];
 }
+# NPG End
 
 ######
 
-
-sub syslog_input {			## output $msg to syslog
-	
+# NPG
+sub syslog_input {
+	# output $msg to syslog & STDOUT
 	my $msg = shift;
 	openlog $ident,'pid';
 	syslog ('notice',$msg);
 	closelog;
-
+	print "$msg\n";
 }
+# NPG End
 
 sub get_ip {				## extract internet ip
 
 	$_ = `/sbin/ifconfig $IFACE 2>&1`;
-
-	if (s/^.*inet[ \t:]*(addr|adr)*[ \t:]*(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}).*$/$2/s) {  		# if ip
-        	if(/^192\.168\..*$/ || /^10\..*$/ || /^172\.((1[6-9])|(2\d)|(3[01]))\..*$/) {  		# is it local ?
-		$ip = $_; $error = 1; 									# yes
-		return $ip, $error;
-        } else { 											# no
-		s/[\n\ \t]//g;
-		$ip = $_; $error = 0;
-		return $ip, $error;
-        } 
-
+	# NPG
+	if (s/^.*inet[ \t:]*(addr|adr)*[ \t:]*(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}).*$/$2/s) {
+		# Is ip RFC 1918 aka local ?
+		if(/^192\.168\..*$/ || /^10\..*$/ || /^172\.((1[6-9])|(2\d)|(3[01]))\..*$/) {
+			$ip = $_;
+			# Yes
+			# Does it matter
+			if ( $BYPASS_CHECK_MODE eq 1 ) {
+				# No
+				$error = 0;
+			}else{
+				# Yes
+				$error = 1;
+			}
+		} else {
+			# No
+			s/[\n\ \t]//g;
+			$ip = $_;
+			$error = 0;
+		}
+	}else{
+		$ip = "-- none --";
+		$error = 1;
+		# everything else than an ip
 	}
-	else { 	$ip = "-- none --"; $error = 1;						# everything else than an ip
-		return $ip, $error; }
-
+	return $ip, $error;
+	# NPG End
 }
 
 sub clean_table {
@@ -120,11 +135,28 @@ system "/sbin/ipvsadm -C";
 
 }
 
-sub update_ipvs {			## update ipvsadm table with
-					## specified $ip, $DEST_IP, and $PORT
-system "/sbin/ipvsadm -A -$PROTOCOL $ip:$PORT -s $SCHEDULER"; ## $SCHEDULER for load balancing
-system "/sbin/ipvsadm -a -$PROTOCOL $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT"; ## $LOCAL_WEIGHT the weight of 
-										## the server
+sub update_ipvs {
+	# NPG
+	# update ipvsadm table with specified $ip, $DEST_IP, and $PORT
+	if ( $PROTOCOL eq "a") {
+		# $SCHEDULER for load balancing
+		system "/sbin/ipvsadm -A -t $ip:$PORT -s $SCHEDULER";
+		system "/sbin/ipvsadm -A -u $ip:$PORT -s $SCHEDULER";
+		# $LOCAL_WEIGHT the weight of  the server
+		system "/sbin/ipvsadm -a -t $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT";
+		system "/sbin/ipvsadm -a -u $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT";
+	}else{
+		# $SCHEDULER for load balancing
+		system "/sbin/ipvsadm -A -$PROTOCOL $ip:$PORT -s $SCHEDULER";
+		# $LOCAL_WEIGHT the weight of  the server
+		system "/sbin/ipvsadm -a -$PROTOCOL $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT";
+	}
+	# Do this stuff here where it actually makes sense.
+	if ( $VERBOSE eq 1 ) { 
+		comments();
+	}
+	syslog_input("ipvsadm table updated for $ip:$PORT to $DEST_IP:$PORT");
+	# NPG End
 }
 
 sub various_info {
@@ -157,67 +189,29 @@ sub conf_number { # to find how much configs we have
 }
 								    
 sub xml_update {
-
-	if ($NUMBER eq 1) { 
-
-		$PROTOCOL = $xmlconf->{conf}->{protocol} ;	# get protocol type
-		$DEST_IP = $xmlconf->{conf}->{destination} ;    # get destination
-		$PORT = $xmlconf->{conf}->{port}->[$p] ;        # get port value
-		$SCHEDULER = $xmlconf->{conf}->{scheduler} ;    # get scheduler type
-		$WEIGHT = $xmlconf->{conf}->{weight} ;		# get the weight of servers
-		
-		if ( $SCHEDULER eq  "wrr" || "wlc" )
-		
-		{ if ( $WEIGHT >= "1" ) { $LOCAL_WEIGHT = $WEIGHT } }
-
-		if ($PORT eq "") { $PORT = $xmlconf->{conf}->{port};
-				   update_ipvs($ip,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT);
-				   syslog_input("ipvsadm table updated for $ip:$PORT to $DEST_IP:$PORT\n", $ident);
-				   if ( $VERBOSE eq 1 ) { comments(); }
-				   print ("=>ipvsadm table updated for $ip:$PORT to $DEST_IP:$PORT\n");
-				}
-		else { while ( $xmlconf->{conf}->{port}->[$p] ) {
-	
-			$PORT = $xmlconf->{conf}->{port}->[$p];
-			update_ipvs($ip,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT);
-			syslog_input("ipvsadm table updated for $ip:$PORT to $DEST_IP:$PORT\n", $ident);
-			if ( $VERBOSE eq 1 ) { comments(); }
-			print ("=>ipvsadm table updated for $ip:$PORT to $DEST_IP:$PORT\n");
-			$p++;
-                        }
-                }	
-
-	} else {
-
-		$PROTOCOL = $xmlconf->{conf}->[$i]->{protocol} ;      	# get protocol type
-		$DEST_IP = $xmlconf->{conf}->[$i]->{destination} ; 	# get destination
-	        $PORT = $xmlconf->{conf}->[$i]->{port}->[$p] ;	    	# get port value
-		$SCHEDULER = $xmlconf->{conf}->[$i]->{scheduler} ;   	# get scheduler type    
-	        $WEIGHT = $xmlconf->{conf}->[$i]->{weight} ; 	    	# get the weight of servers
-	
-		if ( $SCHEDULER eq  "wrr" || "wlc" )
-		
-		{ if ( $WEIGHT >= "1" ) { $LOCAL_WEIGHT = $WEIGHT } }
-		
-		if ($PORT eq "") { $PORT = $xmlconf->{conf}->[$i]->{port};
-				   update_ipvs($ip,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT);
-				   syslog_input("ipvsadm table updated for $ip:$PORT to $DEST_IP:$PORT\n", $ident);
-				   if ( $VERBOSE eq 1 ) { comments(); }
-				   print ("=>ipvsadm table updated for $ip:$PORT to $DEST_IP:$PORT\n");
-			       }
-		
-		else { while ( $xmlconf->{conf}->[$i]->{port}->[$p] ) {
-		
-		    $PORT = $xmlconf->{conf}->[$i]->{port}->[$p];
-		    update_ipvs($ip,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT);
-		    syslog_input("ipvsadm table updated for $ip:$PORT to $DEST_IP:$PORT\n", $ident);
-		    if ( $VERBOSE eq 1 ) { comments(); }
-		    print ("=>ipvsadm table updated for $ip:$PORT to $DEST_IP:$PORT\n");
-		    $p++;
-			}
+	# NPG
+	my $p = 0;
+	$PROTOCOL = $xmlconf->{conf}->[$i]->{protocol}->[0];	# get protocol type
+	$DEST_IP = $xmlconf->{conf}->[$i]->{destination}->[0];	# get destination
+	$PORT = $xmlconf->{conf}->[$i]->{port}->[$p];		# get port value
+	$SCHEDULER = $xmlconf->{conf}->[$i]->{scheduler}->[0];	# get scheduler type    
+	$WEIGHT = $xmlconf->{conf}->[$i]->{weight}->[0];	# get the weight of servers
+	if ( $SCHEDULER eq  "wrr" || "wlc" ){
+		if ( $WEIGHT >= "1" ) {
+			$LOCAL_WEIGHT = $WEIGHT 
 		}
 	}
-
+	if ($PORT eq "") {
+		$PORT = $xmlconf->{conf}->[$i]->{port};
+		update_ipvs($ip,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT);
+	}else{
+		while ( $xmlconf->{conf}->[$i]->{port}->[$p] ) {
+			$PORT = $xmlconf->{conf}->[$i]->{port}->[$p];
+			update_ipvs($ip,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT);
+			$p++;
+		}
+	}
+	# NPG End
 }
 
 conf_number();
@@ -226,21 +220,18 @@ read_conf();
 
 get_ip();
 
+# NPG
+if ( $VERBOSE eq 1 ) {
+	various_info();
+}
 if ( $error eq 0 ) {
-            clean_table();
-            if ( $VERBOSE eq 1 ) { various_info(); }
-	    for ($i = 0; $i < $j; $i++) {  xml_update(); }
-            }
-
-elsif ( $error eq 1 and $BYPASS_CHECK_MODE eq 1 ) {
-            clean_table();
-	    if ( $VERBOSE eq 1 ) { various_info(); }
-            for ($i = 0; $i < $j; $i++) {  xml_update(); }
-            }
-
-
-else { 	print("IP on ",$host," is a private IP. Cannot Update\n");
-	syslog_input("IP on $host is a private IP. Cannot Update\n", $ident);
+	clean_table();
+	for ($i = 0; $i < $j; $i++) {
+		xml_update();
 	}
+}else{
+	syslog_input("IP on $host is a private IP. Cannot Update");
+}
+# NPG End
 
 # end of file
