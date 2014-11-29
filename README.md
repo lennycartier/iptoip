@@ -1,7 +1,7 @@
 iptoip
 ======
 
-perl script to maintain an ipvsadm table coherent
+A project designed to enable coherent IPVS table maintenance on Linux systems.
 
 It is specially useful when using an intermittent internet connection or when your ISP breaks connections to reaffect IP addresses (ie in France). 
 It use the ipvsadm tool to build and update a forwarding table.

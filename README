@@ -1,6 +1,7 @@
 iptoip
 
-(c) Lenny Cartier <l.cartier@gmx.net> / http://iptoip.sourceforge.net
+(c) 2001 Lenny Cartier (l.cartier@free.fr) / https://github.com/lennycartier/iptoip
+(c) 2013-2014 Nathan Gibbs <nathan@cmpublishers.com>
 Licensed under the terms of the GNU GPL (see COPYING)
 
 iptoip is a perl script to help maintaining an ipvsadm table on a non fixed 
