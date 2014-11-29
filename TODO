@@ -1,3 +1,10 @@
+Lenny's original TODO
 - replace $j variable by $nb
 - alternate logfile
 - frontend
+
+Nathan's TODO
+- Reduce the number of system calls in the script.
+	Reduce dependencies on underlying OS commands.
+	Do as much in perl as possible.
+- Review README file, Possibly update it.
