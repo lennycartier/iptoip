@@ -53,7 +53,7 @@ GetOptions(
 
 $help && die <<END;
 
-iptoip-0.3.0 (devel), Copyright (C) 2001 Lenny Cartier
+iptoip-0.3.1 (devel), Copyright (C) 2001 Lenny Cartier (C) 2013-2014 Nathan Gibbs
 iptoip comes with ABSOLUTELY NO WARRANTY; 
 This is free software, and you are welcome to 
 redistribute it under the terms of the GNU GPL.
@@ -91,7 +91,6 @@ sub syslog_input {
 	openlog $ident,'pid';
 	syslog ('notice',$msg);
 	closelog;
-	print "$msg\n";
 }
 
 sub get_ip {
@@ -144,14 +143,14 @@ sub update_ipvs {
 }
 
 sub various_info {
-	print ("Various info :\n");
+	print ("Configuration\n");
 	print ("Verbose mode = $VERBOSE\n");
-	print ("NO RFC 1918 Checks = $BYPASS_CHECK_MODE\n");
+	print ("Disable RFC 1918 Checks = $BYPASS_CHECK_MODE\n");
 	print ("Error code = $error\n");
 }
 
 sub comments {
-	print ("\n* Ipvsadm table update: ");
+	print ("Ipvsadm table update: ");
 	print ("On Int. $IFACE $ip:$PORT to $DEST_IP:$PORT\n");
 	print ("Proto=$PROTOCOL Weight=$WEIGHT Scheduler=$SCHEDULER\n");
 }
