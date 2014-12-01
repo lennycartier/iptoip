@@ -94,27 +94,21 @@ sub syslog_input {
 	print "$msg\n";
 }
 
-sub get_ip {				## extract internet ip
+sub get_ip {
+	# extract internet ip
 	$_ = `/sbin/ifconfig $IFACE 2>&1`;
 	if (s/^.*inet[ \t:]*(addr|adr)*[ \t:]*(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}).*$/$2/s) {
-		# Is ip RFC 1918 aka local ?
-		if(/^192\.168\..*$/ || /^10\..*$/ || /^172\.((1[6-9])|(2\d)|(3[01]))\..*$/) {
-			$ip = $_;
-			# Yes
-			# Does it matter
-			if ( $BYPASS_CHECK_MODE eq 1 ) {
-				# No
-				$error = 0;
-			}else{
-				# Yes
+		# Assume all is well.
+		$error = 0;
+		# Do we want RFC 1918 Checking?
+		if ( $BYPASS_CHECK_MODE ne 1 ) {
+			# RFC 1918 Check
+			if(/^192\.168\..*$/ || /^10\..*$/ || /^172\.((1[6-9])|(2\d)|(3[01]))\..*$/) {
 				$error = 1;
 			}
-		} else {
-			# No
-			s/[\n\ \t]//g;
-			$ip = $_;
-			$error = 0;
 		}
+		s/[\n\ \t]//g;
+		$ip = $_;
 	}else{
 		$ip = "-- none --";
 		$error = 1;
@@ -124,9 +118,7 @@ sub get_ip {				## extract internet ip
 }
 
 sub clean_table {
-
-system "/sbin/ipvsadm -C";
-
+	system "/sbin/ipvsadm -C";
 }
 
 sub update_ipvs {
@@ -154,30 +146,34 @@ sub update_ipvs {
 sub various_info {
 	print ("Various info :\n");
 	print ("Verbose mode = $VERBOSE\n");
-	print ("Hack mode = $BYPASS_CHECK_MODE\n");
+	print ("NO RFC 1918 Checks = $BYPASS_CHECK_MODE\n");
 	print ("Error code = $error\n");
 }
 
 sub comments {
-
-print ("\n* Setting ipvsadm table for :");
-print ("\nFrom $ip ( interface $IFACE ), port $PORT\n");
-print ("to $DEST_IP on port $PORT:$PROTOCOL with a weight of $WEIGHT\n");
-print ("the scheduling method is $SCHEDULER\n");
-
+	print ("\n* Ipvsadm table update: ");
+	print ("On Int. $IFACE $ip:$PORT to $DEST_IP:$PORT\n");
+	print ("Proto=$PROTOCOL Weight=$WEIGHT Scheduler=$SCHEDULER\n");
 }
 
 sub conf_number { # to find how much configs we have
 	my $nb;
 	open (XMLFILE,"<$xmlarg") || die " Can't open $xmlarg\n ";
-	while (<XMLFILE>) { if ( /\bconf\b/ ) { $nb++; } } 	# number of <conf> tags
-	
-	# test if there is a non closed tag && to know if we've got 1 conf	
+	while (<XMLFILE>) {
+		if ( /\bconf\b/ ) {
+			$nb++;
+		}
+		# number of <conf> tags
+	}
+	# test if there is a non closed tag && to know if we've got 1 conf
 	$quot = ( $nb / 2 ); 
 	$j = ( $nb / 2 ) ;
-	if ( $quot =~ /\d\.\d/ ) { die " ERROR, check your xml configuration file\n Remember to close <conf> tags\n"  }
-		elsif ( $quot eq 1 ) { $NUMBER = $quot; }
-		return $NUMBER, $j;
+	if ( $quot =~ /\d\.\d/ ) {
+		die " ERROR, check your xml configuration file\n Remember to close <conf> tags\n";
+	}elsif ( $quot eq 1 ) {
+		$NUMBER = $quot;
+	}
+	return $NUMBER, $j;
 }
 
 sub xml_update {
@@ -205,11 +201,8 @@ sub xml_update {
 }
 
 conf_number();
-
 read_conf();
-
 get_ip();
-
 
 if ( $VERBOSE eq 1 ) {
 	various_info();
