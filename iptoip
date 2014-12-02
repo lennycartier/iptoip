@@ -46,7 +46,7 @@ my ( $BYPASS_CHECK_MODE, $SYSLOG_OUT, $VERBOSE, $IFACE );
 my ( $DEST_IP, $PORT, $SCHEDULER, $PROTOCOL );
 my $WEIGHT = $LOCAL_WEIGHT;
 # Conf check Vars
-my ( $NUMBER, $nb, $quot );
+my ( $NUMBER, $nb, $quot, $xmlOK, $xmlEr );
 
 ## Inline Options #########################################
 
@@ -72,15 +72,40 @@ END
 
 ###########################################################
 
-### First config setup
-
-if ( $xmlarg eq "" ) {
-	$xmlarg = "/etc/iptoip.xml"
-};
-
+# Setup XML Parser
 # Array-ize everything
 my $xs = XML::Simple->new(ForceArray => 1);
-my $xmlconf = $xs->XMLin($xmlarg);
+
+# Config setup.
+if ( $xmlarg eq "" ) {
+	$xmlarg = "/etc/iptoip.xml"
+}
+# Check Conf File Sanity.
+$xmlOK = 0;
+if ( -e $xmlarg ) {
+	if ( !-z $xmlarg ) {
+		if ( -r $xmlarg ) {
+			# Is XML OK?
+			$xmlOK = eval { $xmlconf = $xs->XMLin($xmlarg) };
+			if ($@) {
+				$xmlEr = "Format";
+			}else{
+				$xmlOK = 1;
+			}
+		}else{
+			$xmlEr = "Read";
+		}
+	}else{
+		$xmlEr = "Length";
+	}
+}else{
+	$xmlEr = "does not exist";
+}
+if ( !defined $xmlOK ){
+	die "Error File $xmlEr: $xmlarg: $@";
+}elsif ( $xmlOK != 1 ) {
+	die "Error File $xmlEr: $xmlarg\n";
+}
 
 sub read_conf {
 	$BYPASS_CHECK_MODE = $xmlconf->{nocheck}->[0];
@@ -189,7 +214,7 @@ sub xml_update {
 	$SCHEDULER = $xmlconf->{conf}->[$i]->{scheduler}->[0];	# get scheduler type    
 	if ( $SCHEDULER eq ( "wrr" || "wlc" ) ){
 		$WEIGHT = $xmlconf->{conf}->[$i]->{weight}->[0];	# get the weight of servers
-		if ( $WEIGHT >= "1" ) {
+		if ( $WEIGHT > "1" ) {
 			$LOCAL_WEIGHT = $WEIGHT 
 		}
 	}
