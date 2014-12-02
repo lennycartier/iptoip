@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 
 ###############################################################################
 #
@@ -38,11 +38,15 @@ my $p = 0;
 my $help = 0; 
 my $ident = "[iptoip]";
 my $LOCAL_WEIGHT = "1";
-my $xmlconf = "/etc/iptoip.xml";
+my $xmlarg = "";
 
+# Configuration Vars
 my ( $BYPASS_CHECK_MODE, $SYSLOG_OUT, $VERBOSE, $IFACE );
-my ( $DEST_IP, $PORT, $SCHEDULER, $WEIGHT, $PROTOCOL ); # ipvsadm args
-my ( $NUMBER, $nb, $quot ); # to help find how much conf
+# ipvsadm args
+my ( $DEST_IP, $PORT, $SCHEDULER, $PROTOCOL );
+my $WEIGHT = $LOCAL_WEIGHT;
+# Conf check Vars
+my ( $NUMBER, $nb, $quot );
 
 ## Inline Options #########################################
 
@@ -70,7 +74,9 @@ END
 
 ### First config setup
 
-if ( $xmlarg eq "" ) { $xmlarg = "/etc/iptoip.xml" };
+if ( $xmlarg eq "" ) {
+	$xmlarg = "/etc/iptoip.xml"
+};
 
 # Array-ize everything
 my $xs = XML::Simple->new(ForceArray => 1);
@@ -152,7 +158,7 @@ sub various_info {
 sub comments {
 	print ("Ipvsadm table update: ");
 	print ("On Int. $IFACE $ip:$PORT to $DEST_IP:$PORT\n");
-	print ("Proto=$PROTOCOL Weight=$WEIGHT Scheduler=$SCHEDULER\n");
+	print ("Proto=$PROTOCOL Weight=$LOCAL_WEIGHT Scheduler=$SCHEDULER\n");
 }
 
 sub conf_number { # to find how much configs we have
@@ -181,8 +187,8 @@ sub xml_update {
 	$DEST_IP = $xmlconf->{conf}->[$i]->{destination}->[0];	# get destination
 	$PORT = $xmlconf->{conf}->[$i]->{port}->[$p];		# get port value
 	$SCHEDULER = $xmlconf->{conf}->[$i]->{scheduler}->[0];	# get scheduler type    
-	$WEIGHT = $xmlconf->{conf}->[$i]->{weight}->[0];	# get the weight of servers
-	if ( $SCHEDULER eq  "wrr" || "wlc" ){
+	if ( $SCHEDULER eq ( "wrr" || "wlc" ) ){
+		$WEIGHT = $xmlconf->{conf}->[$i]->{weight}->[0];	# get the weight of servers
 		if ( $WEIGHT >= "1" ) {
 			$LOCAL_WEIGHT = $WEIGHT 
 		}

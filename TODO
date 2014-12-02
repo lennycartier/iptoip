@@ -9,3 +9,4 @@ Nathan's TODO
 	Do as much in perl as possible.
 - Review README file, Possibly update it.
 - Eliminate die command from subs.
+- Add support for the conf <origin> tag.
