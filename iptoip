@@ -106,6 +106,21 @@ if ( !defined $xmlOK ){
 }elsif ( $xmlOK != 1 ) {
 	die "Error File $xmlEr: $xmlarg\n";
 }
+conf_number();
+read_conf();
+get_ip();
+
+if ( $VERBOSE eq 1 ) {
+	various_info();
+}
+if ( $error eq 0 ) {
+	clean_table();
+	for ($i = 0; $i < $j; $i++) {
+		xml_update();
+	}
+}else{
+	syslog_input("IP on $host is a private IP. Cannot Update");
+}
 
 sub read_conf {
 	$BYPASS_CHECK_MODE = $xmlconf->{nocheck}->[0];
@@ -228,22 +243,6 @@ sub xml_update {
 			$p++;
 		}
 	}
-}
-
-conf_number();
-read_conf();
-get_ip();
-
-if ( $VERBOSE eq 1 ) {
-	various_info();
-}
-if ( $error eq 0 ) {
-	clean_table();
-	for ($i = 0; $i < $j; $i++) {
-		xml_update();
-	}
-}else{
-	syslog_input("IP on $host is a private IP. Cannot Update");
 }
 
 # end of file
