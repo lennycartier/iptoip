@@ -46,7 +46,7 @@ my ( $BYPASS_CHECK_MODE, $SYSLOG_OUT, $VERBOSE, $IFACE );
 my ( $DEST_IP, $PORT, $SCHEDULER, $PROTOCOL );
 my $WEIGHT = $LOCAL_WEIGHT;
 # Conf check Vars
-my ( $NUMBER, $nb, $quot );
+my ( $NUMBER, $nb, $quot, $xmlOK, $xmlEr );
 
 ## Inline Options #########################################
 
@@ -72,15 +72,57 @@ END
 
 ###########################################################
 
-### First config setup
-
-if ( $xmlarg eq "" ) {
-	$xmlarg = "/etc/iptoip.xml"
-};
-
+# Setup XML Parser
 # Array-ize everything
 my $xs = XML::Simple->new(ForceArray => 1);
-my $xmlconf = $xs->XMLin($xmlarg);
+
+# Config setup.
+if ( $xmlarg eq "" ) {
+	$xmlarg = "/etc/iptoip.xml"
+}
+# Check Conf File Sanity.
+$xmlOK = 0;
+if ( -e $xmlarg ) {
+	if ( !-z $xmlarg ) {
+		if ( -r $xmlarg ) {
+			# Is XML OK?
+			$xmlOK = eval { $xmlconf = $xs->XMLin($xmlarg) };
+			if ($@) {
+				$xmlEr = "Format";
+			}else{
+				$xmlOK = 1;
+			}
+		}else{
+			$xmlEr = "Read";
+		}
+	}else{
+		$xmlEr = "Length";
+	}
+}else{
+	$xmlEr = "does not exist";
+}
+if ( defined $xmlOK ){
+	if ( $xmlOK == 1 ) {
+		conf_number();
+		read_conf();
+		get_ip();
+		if ( $VERBOSE eq 1 ) {
+			various_info();
+		}
+		if ( $error eq 0 ) {
+			clean_table();
+			for ($i = 0; $i < $j; $i++) {
+				xml_update();
+			}
+		}else{
+			syslog_input("IP on $host is a private IP. Cannot Update");
+		}
+	}else{
+		die "Error File $xmlEr: $xmlarg\n";
+	}
+}else{
+	die "Error File $xmlEr: $xmlarg: $@";
+}
 
 sub read_conf {
 	$BYPASS_CHECK_MODE = $xmlconf->{nocheck}->[0];
@@ -88,8 +130,6 @@ sub read_conf {
 	$VERBOSE = $xmlconf->{verbose}->[0];
 	$IFACE = $xmlconf->{iface}->[0];
 }
-
-######
 
 sub syslog_input {
 	# output $msg to syslog & STDOUT
@@ -127,25 +167,46 @@ sub clean_table {
 }
 
 sub update_ipvs {
+	my ($ip,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT) = @_;
 	# update ipvsadm table with specified $ip, $DEST_IP, and $PORT
-	if ( $PROTOCOL eq "a") {
-		# $SCHEDULER for load balancing
-		system "/sbin/ipvsadm -A -t $ip:$PORT -s $SCHEDULER";
-		system "/sbin/ipvsadm -A -u $ip:$PORT -s $SCHEDULER";
-		# $LOCAL_WEIGHT the weight of  the server
-		system "/sbin/ipvsadm -a -t $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT";
-		system "/sbin/ipvsadm -a -u $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT";
+	# $SCHEDULER for load balancing
+	# $LOCAL_WEIGHT the weight of  the server
+	my $RET = &ipvs_add_svc ($PROTOCOL,$ip,$PORT,$SCHEDULER);
+	if ( $RET !=0 ) {
+		syslog_input("FAILURE IPVS table update for $ip:$PORT to $DEST_IP:$PORT");
 	}else{
-		# $SCHEDULER for load balancing
-		system "/sbin/ipvsadm -A -$PROTOCOL $ip:$PORT -s $SCHEDULER";
-		# $LOCAL_WEIGHT the weight of  the server
-		system "/sbin/ipvsadm -a -$PROTOCOL $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT";
+		if ( $PROTOCOL eq "a") {
+			system "/sbin/ipvsadm -a -t $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT";
+			system "/sbin/ipvsadm -a -u $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT";
+		}else{
+			system "/sbin/ipvsadm -a -$PROTOCOL $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT";
+		}
+		# Do this stuff here where it actually makes sense.
+		if ( $VERBOSE eq 1 ) { 
+			comments();
+		}
+		syslog_input("SUCCESS IPVS table update for $ip:$PORT to $DEST_IP:$PORT");
 	}
-	# Do this stuff here where it actually makes sense.
-	if ( $VERBOSE eq 1 ) { 
-		comments();
+}
+
+sub ipvs_add_svc {
+	my ($Proto, $ip, $Port, $Sched) = @_;
+	my $cmd = "/sbin/ipvsadm -A";
+	my ( $RET, $TRET, $URET ) = 1;
+	$Proto = lc ($Proto);
+	if ( $Proto eq "a") {
+		$TRET = &ipvs_add_svc ("t", $ip, $Port, $Sched);
+		if ( $TRET == 0 ) {
+			$URET = &ipvs_add_svc ("u", $ip, $Port, $Sched);
+		}
+		if ( $TRET == 0 && $URET == 0 ) {
+			$RET = 0;
+		}
+	}else{
+		$cmd = $cmd . " -$Proto $ip:$Port -s $Sched";
+		$RET = system "$cmd";
 	}
-	syslog_input("ipvsadm table updated for $ip:$PORT to $DEST_IP:$PORT");
+	return($RET);
 }
 
 sub various_info {
@@ -156,7 +217,7 @@ sub various_info {
 }
 
 sub comments {
-	print ("Ipvsadm table update: ");
+	print ("IPVS table update: ");
 	print ("On Int. $IFACE $ip:$PORT to $DEST_IP:$PORT\n");
 	print ("Proto=$PROTOCOL Weight=$LOCAL_WEIGHT Scheduler=$SCHEDULER\n");
 }
@@ -189,7 +250,7 @@ sub xml_update {
 	$SCHEDULER = $xmlconf->{conf}->[$i]->{scheduler}->[0];	# get scheduler type    
 	if ( $SCHEDULER eq ( "wrr" || "wlc" ) ){
 		$WEIGHT = $xmlconf->{conf}->[$i]->{weight}->[0];	# get the weight of servers
-		if ( $WEIGHT >= "1" ) {
+		if ( $WEIGHT > "1" ) {
 			$LOCAL_WEIGHT = $WEIGHT 
 		}
 	}
@@ -204,21 +265,3 @@ sub xml_update {
 		}
 	}
 }
-
-conf_number();
-read_conf();
-get_ip();
-
-if ( $VERBOSE eq 1 ) {
-	various_info();
-}
-if ( $error eq 0 ) {
-	clean_table();
-	for ($i = 0; $i < $j; $i++) {
-		xml_update();
-	}
-}else{
-	syslog_input("IP on $host is a private IP. Cannot Update");
-}
-
-# end of file
