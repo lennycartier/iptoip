@@ -167,25 +167,46 @@ sub clean_table {
 }
 
 sub update_ipvs {
+	my ($ip,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT) = @_;
 	# update ipvsadm table with specified $ip, $DEST_IP, and $PORT
-	if ( $PROTOCOL eq "a") {
-		# $SCHEDULER for load balancing
-		system "/sbin/ipvsadm -A -t $ip:$PORT -s $SCHEDULER";
-		system "/sbin/ipvsadm -A -u $ip:$PORT -s $SCHEDULER";
-		# $LOCAL_WEIGHT the weight of  the server
-		system "/sbin/ipvsadm -a -t $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT";
-		system "/sbin/ipvsadm -a -u $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT";
+	# $SCHEDULER for load balancing
+	# $LOCAL_WEIGHT the weight of  the server
+	my $RET = &ipvs_add_svc ($PROTOCOL,$ip,$PORT,$SCHEDULER);
+	if ( $RET !=0 ) {
+		syslog_input("FAILURE IPVS table update for $ip:$PORT to $DEST_IP:$PORT");
 	}else{
-		# $SCHEDULER for load balancing
-		system "/sbin/ipvsadm -A -$PROTOCOL $ip:$PORT -s $SCHEDULER";
-		# $LOCAL_WEIGHT the weight of  the server
-		system "/sbin/ipvsadm -a -$PROTOCOL $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT";
+		if ( $PROTOCOL eq "a") {
+			system "/sbin/ipvsadm -a -t $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT";
+			system "/sbin/ipvsadm -a -u $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT";
+		}else{
+			system "/sbin/ipvsadm -a -$PROTOCOL $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT";
+		}
+		# Do this stuff here where it actually makes sense.
+		if ( $VERBOSE eq 1 ) { 
+			comments();
+		}
+		syslog_input("SUCCESS IPVS table update for $ip:$PORT to $DEST_IP:$PORT");
 	}
-	# Do this stuff here where it actually makes sense.
-	if ( $VERBOSE eq 1 ) { 
-		comments();
+}
+
+sub ipvs_add_svc {
+	my ($Proto, $ip, $Port, $Sched) = @_;
+	my $cmd = "/sbin/ipvsadm -A";
+	my ( $RET, $TRET, $URET ) = 1;
+	$Proto = lc ($Proto);
+	if ( $Proto eq "a") {
+		$TRET = &ipvs_add_svc ("t", $ip, $Port, $Sched);
+		if ( $TRET == 0 ) {
+			$URET = &ipvs_add_svc ("u", $ip, $Port, $Sched);
+		}
+		if ( $TRET == 0 && $URET == 0 ) {
+			$RET = 0;
+		}
+	}else{
+		$cmd = $cmd . " -$Proto $ip:$Port -s $Sched";
+		$RET = system "$cmd";
 	}
-	syslog_input("ipvsadm table updated for $ip:$PORT to $DEST_IP:$PORT");
+	return($RET);
 }
 
 sub various_info {
@@ -196,7 +217,7 @@ sub various_info {
 }
 
 sub comments {
-	print ("Ipvsadm table update: ");
+	print ("IPVS table update: ");
 	print ("On Int. $IFACE $ip:$PORT to $DEST_IP:$PORT\n");
 	print ("Proto=$PROTOCOL Weight=$LOCAL_WEIGHT Scheduler=$SCHEDULER\n");
 }
