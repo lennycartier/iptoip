@@ -101,25 +101,27 @@ if ( -e $xmlarg ) {
 }else{
 	$xmlEr = "does not exist";
 }
-if ( !defined $xmlOK ){
-	die "Error File $xmlEr: $xmlarg: $@";
-}elsif ( $xmlOK != 1 ) {
-	die "Error File $xmlEr: $xmlarg\n";
-}
-conf_number();
-read_conf();
-get_ip();
-
-if ( $VERBOSE eq 1 ) {
-	various_info();
-}
-if ( $error eq 0 ) {
-	clean_table();
-	for ($i = 0; $i < $j; $i++) {
-		xml_update();
+if ( defined $xmlOK ){
+	if ( $xmlOK == 1 ) {
+		conf_number();
+		read_conf();
+		get_ip();
+		if ( $VERBOSE eq 1 ) {
+			various_info();
+		}
+		if ( $error eq 0 ) {
+			clean_table();
+			for ($i = 0; $i < $j; $i++) {
+				xml_update();
+			}
+		}else{
+			syslog_input("IP on $host is a private IP. Cannot Update");
+		}
+	}else{
+		die "Error File $xmlEr: $xmlarg\n";
 	}
 }else{
-	syslog_input("IP on $host is a private IP. Cannot Update");
+	die "Error File $xmlEr: $xmlarg: $@";
 }
 
 sub read_conf {
@@ -128,8 +130,6 @@ sub read_conf {
 	$VERBOSE = $xmlconf->{verbose}->[0];
 	$IFACE = $xmlconf->{iface}->[0];
 }
-
-######
 
 sub syslog_input {
 	# output $msg to syslog & STDOUT
@@ -244,5 +244,3 @@ sub xml_update {
 		}
 	}
 }
-
-# end of file
