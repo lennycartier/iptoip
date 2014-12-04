@@ -209,6 +209,26 @@ sub ipvs_add_svc {
 	return($RET);
 }
 
+sub ipvs_add_svr {
+	my ($Proto, $ip, $Port, $Dstip, $Weight) = @_;
+	my $cmd = "/sbin/ipvsadm -a";
+	my ( $RET, $TRET, $URET ) = 1;
+	$Proto = lc ($Proto);
+	if ( $Proto eq "a") {
+		$TRET = &ipvs_add_svr ("t", $ip, $Port, $Dstip, $Weight);
+		if ( $TRET == 0 ) {
+			$URET = &ipvs_add_svr ("u", $ip, $Port, $Dstip, $Weight);
+		}
+		if ( $TRET == 0 && $URET == 0 ) {
+			$RET = 0;
+		}
+	}else{
+		$cmd = $cmd . " -$Proto $ip:$Port -r $Dstip:$Port -m -w $Weight";
+		$RET = system "$cmd";
+	}
+	return($RET);
+}
+
 sub various_info {
 	print ("Configuration\n");
 	print ("Verbose mode = $VERBOSE\n");
