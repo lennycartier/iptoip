@@ -238,7 +238,7 @@ sub various_info {
 
 sub comments {
 	print ("IPVS table update: ");
-	print ("On Int. $IFACE $ip:$PORT to $DEST_IP:$PORT\n");
+	print ("Int=$IFACE $ip:$PORT to $DEST_IP:$PORT\n");
 	print ("Proto=$PROTOCOL Weight=$LOCAL_WEIGHT Scheduler=$SCHEDULER\n");
 }
 
