@@ -28,6 +28,8 @@ use Sys::Hostname;
 use Getopt::Long;
 use Sys::Syslog  qw(:DEFAULT setlogsock);
 use XML::Simple;
+use Socket;
+require 'sys/ioctl.ph';
 
 setlogsock 'unix';
 
@@ -187,6 +189,28 @@ sub update_ipvs {
 		}
 		syslog_input("SUCCESS IPVS table update for $ip:$PORT to $DEST_IP:$PORT");
 	}
+}
+
+sub int_get_ip {
+	my ($iface) = @_;
+	my ($socket, $buf, $RET, $IP, $irt );
+	my @address = ();
+	my $proto = getprotobyname('tcp');
+	my $result = socket($socket, PF_INET, SOCK_STREAM, $proto);
+	if ( !$result ) {
+		$RET = -1;
+	}else{
+		$buf = pack('a256', $iface);
+		$irt = ioctl($socket, SIOCGIFADDR(), $buf );
+		if ( $irt ) {
+			@address = unpack('x20 C4', $buf);
+			$RET = 1;
+			$IP = join('.', @address);
+		}else{
+			$RET = 0;
+		}
+	}
+	return ( $RET, $IP );
 }
 
 sub ipvs_add_svc {
