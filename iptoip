@@ -136,11 +136,13 @@ sub read_conf {
 }
 
 sub syslog_input {
-	# output $msg to syslog & STDOUT
+	# output $msg to syslog
 	my $msg = shift;
-	openlog $ident,'pid';
-	syslog ('notice',$msg);
-	closelog;
+	if ( $SYSLOG_OUT != 0 ) {
+		openlog $ident,'pid';
+		syslog ('notice',$msg);
+		closelog;
+	}
 }
 
 sub get_ip {
@@ -164,6 +166,7 @@ sub get_ip {
 }
 
 sub clean_table {
+	syslog_input("Clearing IPVS table");
 	system "/sbin/ipvsadm -C";
 }
 
@@ -251,10 +254,12 @@ sub ipvs_add_svr {
 }
 
 sub various_info {
-	print ("Configuration\n");
-	print ("Verbose mode = $VERBOSE\n");
-	print ("Disable RFC 1918 Checks = $BYPASS_CHECK_MODE\n");
-	print ("Error code = $error\n");
+	print "Configuration\n";
+	print "Verbose mode = $VERBOSE\n";
+	print "SYSLOG Output = $SYSLOG_OUT\n";
+	print "Interface = $IFACE\n";
+	print "Disable RFC 1918 Checks = $BYPASS_CHECK_MODE\n";
+	print "Current Error code = $error\n";
 }
 
 sub comments {
