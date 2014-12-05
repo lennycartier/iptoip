@@ -111,7 +111,12 @@ if ( defined $xmlOK ){
 		read_conf();
 		($error, $ip) = &get_ip($IFACE);
 		if ( $VERBOSE eq 1 ) {
-			various_info();
+			print "Configuration\n";
+			print "Verbose mode = $VERBOSE\n";
+			print "SYSLOG Output = $SYSLOG_OUT\n";
+			print "Interface = $IFACE\n";
+			print "Disable RFC 1918 Checks = $BYPASS_CHECK_MODE\n";
+			print "Current Error code = $error\n";
 		}
 		if ( $error eq 0 ) {
 			clean_table();
@@ -251,15 +256,6 @@ sub ipvs_add_svr {
 		$RET = system "$cmd";
 	}
 	return($RET);
-}
-
-sub various_info {
-	print "Configuration\n";
-	print "Verbose mode = $VERBOSE\n";
-	print "SYSLOG Output = $SYSLOG_OUT\n";
-	print "Interface = $IFACE\n";
-	print "Disable RFC 1918 Checks = $BYPASS_CHECK_MODE\n";
-	print "Current Error code = $error\n";
 }
 
 sub comments {
