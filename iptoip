@@ -36,7 +36,7 @@ use bytes;
 # Global Vars
 my $i = 0;
 my $host = hostname();
-my ($ip, $error); 
+my ($ip, $error, $RET); 
 my $p = 0;
 my $help = 0; 
 my $ident = "[iptoip]";
@@ -119,11 +119,18 @@ if ( defined $xmlOK ){
 		}
 		if ( $error eq 0 ) {
 			clean_table();
+			&syslog_input('notice', "IPVS Adding Virtual Entities");
 			for ($i = 0; $i < $ConfBC; $i++) {
-				xml_update($i);
+				$RET = &xml_update($i);
+				if ( $RET == 0 ) {
+					&syslog_input('error', "IPVS Add VE failed");
+					last;
+				}else{
+					&syslog_input('notice', "IPVS Add VE success");
+				}
 			}
 		}else{
-			syslog_input('error', "IP on $host is a private IP. Cannot Update");
+			&syslog_input('error', "IP on $host is a private IP. Cannot Update");
 		}
 	}else{
 		die "Error File $xmlEr: $xmlarg\n";
@@ -170,7 +177,7 @@ sub get_ip {
 }
 
 sub clean_table {
-	syslog_input('notice',"Clearing IPVS table");
+	syslog_input('notice',"IPVS Clearing table");
 	system "/sbin/ipvsadm -C";
 }
 
@@ -181,18 +188,25 @@ sub update_ipvs {
 	# $LOCAL_WEIGHT the weight of  the server
 	my $RET = &ipvs_add_svc ($PROTOCOL,$ip,$PORT,$SCHEDULER);
 	if ( $RET !=0 ) {
-		syslog_input('error',"FAILURE IPVS Add Service for $ip:$PORT");
+		&syslog_input('error',"IPVS VE Add Service failed for $ip:$PORT");
 	}else{
 		$RET = &ipvs_add_svr ($PROTOCOL,$ip,$PORT,$DEST_IP,$LOCAL_WEIGHT);
 		if ( $RET !=0 ) {
-			syslog_input('error',"FAILURE IPVS Add Server for $ip:$PORT to $DEST_IP:$PORT");
+			&syslog_input('error',"IPVS VE Add Server failed for $DEST_IP:$PORT");
+		}else{
+			# Do this stuff here where it actually makes sense.
+			if ( $VERBOSE eq 1 ) { 
+				comments();
+			}
+			&syslog_input('notice',"IPVS VE Add $ip:$PORT to $DEST_IP:$PORT");
 		}
-		# Do this stuff here where it actually makes sense.
-		if ( $VERBOSE eq 1 ) { 
-			comments();
-		}
-		syslog_input('notice',"SUCCESS IPVS table update for $ip:$PORT to $DEST_IP:$PORT");
 	}
+	if ($RET == 0){
+		$RET = 1;
+	}else{
+		$RET = 0;
+	}
+	return($RET);
 }
 
 sub int_get_ip {
@@ -258,14 +272,14 @@ sub ipvs_add_svr {
 }
 
 sub comments {
-	print ("IPVS table update: ");
-	print ("Int=$IFACE $ip:$PORT to $DEST_IP:$PORT\n");
-	print ("Proto=$PROTOCOL Weight=$LOCAL_WEIGHT Scheduler=$SCHEDULER\n");
+	print ("IPVS VE add: ");
+	print ("$ip:$PORT to $DEST_IP:$PORT\n");
+	print ("Int=$IFACE Proto=$PROTOCOL Scheduler=$SCHEDULER Weight=$LOCAL_WEIGHT\n");
 }
 
 sub xml_update {
 	my $i = shift;
-	my $p = 0;
+	my ( $p, $RET ) = 0;
 	$PROTOCOL = $xmlconf->{conf}->[$i]->{protocol}->[0];	# get protocol type
 	$DEST_IP = $xmlconf->{conf}->[$i]->{destination}->[0];	# get destination
 	$PORT = $xmlconf->{conf}->[$i]->{port}->[0];		# get port value
@@ -278,7 +292,12 @@ sub xml_update {
 	}
 	while ( $xmlconf->{conf}->[$i]->{port}->[$p] ) {
 		$PORT = $xmlconf->{conf}->[$i]->{port}->[$p];
-		update_ipvs($ip,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT);
-		$p++;
+		$RET = &update_ipvs($ip,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT);
+		if ( $RET == 0 ) {
+			last;
+		}else{
+			$p++;
+		}
 	}
+	return($RET);
 }
