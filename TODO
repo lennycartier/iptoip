@@ -1,5 +1,4 @@
 Lenny's original TODO
-- replace $j variable by $nb
 - alternate logfile
 - frontend
 
@@ -8,5 +7,4 @@ Nathan's TODO
 	Reduce dependencies on underlying OS commands.
 	Do as much in perl as possible.
 - Review README file, Possibly update it.
-- Eliminate die command from subs.
 - Add support for the conf <origin> tag.

@@ -34,7 +34,7 @@ require 'sys/ioctl.ph';
 use bytes;
 
 # Global Vars
-my ( $i, $j );
+my $i = 0;
 my $host = hostname();
 my ($ip, $error); 
 my $p = 0;
@@ -49,7 +49,7 @@ my ( $BYPASS_CHECK_MODE, $SYSLOG_OUT, $VERBOSE, $IFACE );
 my ( $DEST_IP, $PORT, $SCHEDULER, $PROTOCOL );
 my $WEIGHT = $LOCAL_WEIGHT;
 # Conf check Vars
-my ( $NUMBER, $nb, $quot, $xmlOK, $xmlEr );
+my ( $ConfBC, $xmlOK, $xmlEr );
 
 ## Inline Options #########################################
 
@@ -106,8 +106,8 @@ if ( -e $xmlarg ) {
 }
 if ( defined $xmlOK ){
 	if ( $xmlOK == 1 ) {
-		conf_number();
 		read_conf();
+		$ConfBC = scalar(@{$xmlconf->{conf}});
 		($error, $ip) = &get_ip($IFACE);
 		if ( $VERBOSE eq 1 ) {
 			print "Configuration\n";
@@ -119,7 +119,7 @@ if ( defined $xmlOK ){
 		}
 		if ( $error eq 0 ) {
 			clean_table();
-			for ($i = 0; $i < $j; $i++) {
+			for ($i = 0; $i < $ConfBC; $i++) {
 				xml_update();
 			}
 		}else{
@@ -261,26 +261,6 @@ sub comments {
 	print ("IPVS table update: ");
 	print ("Int=$IFACE $ip:$PORT to $DEST_IP:$PORT\n");
 	print ("Proto=$PROTOCOL Weight=$LOCAL_WEIGHT Scheduler=$SCHEDULER\n");
-}
-
-sub conf_number { # to find how much configs we have
-	my $nb;
-	open (XMLFILE,"<$xmlarg") || die " Can't open $xmlarg\n ";
-	while (<XMLFILE>) {
-		if ( /\bconf\b/ ) {
-			$nb++;
-		}
-		# number of <conf> tags
-	}
-	# test if there is a non closed tag && to know if we've got 1 conf
-	$quot = ( $nb / 2 ); 
-	$j = ( $nb / 2 ) ;
-	if ( $quot =~ /\d\.\d/ ) {
-		die " ERROR, check your xml configuration file\n Remember to close <conf> tags\n";
-	}elsif ( $quot eq 1 ) {
-		$NUMBER = $quot;
-	}
-	return $NUMBER, $j;
 }
 
 sub xml_update {
