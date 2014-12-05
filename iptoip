@@ -28,6 +28,10 @@ use Sys::Hostname;
 use Getopt::Long;
 use Sys::Syslog  qw(:DEFAULT setlogsock);
 use XML::Simple;
+use Socket;
+require 'sys/ioctl.ph';
+# Kill UTF-8
+use bytes;
 
 setlogsock 'unix';
 
@@ -105,7 +109,7 @@ if ( defined $xmlOK ){
 	if ( $xmlOK == 1 ) {
 		conf_number();
 		read_conf();
-		get_ip();
+		($error, $ip) = &get_ip($IFACE);
 		if ( $VERBOSE eq 1 ) {
 			various_info();
 		}
@@ -132,37 +136,37 @@ sub read_conf {
 }
 
 sub syslog_input {
-	# output $msg to syslog & STDOUT
+	# output $msg to syslog
 	my $msg = shift;
-	openlog $ident,'pid';
-	syslog ('notice',$msg);
-	closelog;
+	if ( $SYSLOG_OUT != 0 ) {
+		openlog $ident,'pid';
+		syslog ('notice',$msg);
+		closelog;
+	}
 }
 
 sub get_ip {
+	my $iface = shift;
 	# extract internet ip
-	$_ = `/sbin/ifconfig $IFACE 2>&1`;
-	if (s/^.*inet[ \t:]*(addr|adr)*[ \t:]*(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}).*$/$2/s) {
-		# Assume all is well.
-		$error = 0;
-		# Do we want RFC 1918 Checking?
-		if ( $BYPASS_CHECK_MODE ne 1 ) {
-			# RFC 1918 Check
-			if(/^192\.168\..*$/ || /^10\..*$/ || /^172\.((1[6-9])|(2\d)|(3[01]))\..*$/) {
-				$error = 1;
-			}
+	my ( $OK, $IP ) = &int_get_ip($iface);
+	my $RET;
+	# Fix this use of special Var :-(
+	$_ = $IP;
+	# Assume all is well.
+	$RET = 0;
+	# Do we want RFC 1918 Checking?
+	if ( $BYPASS_CHECK_MODE ne 1 ) {
+		# RFC 1918 Check
+		# Fix this line to not req $_ :-(
+		if(/^192\.168\..*$/ || /^10\..*$/ || /^172\.((1[6-9])|(2\d)|(3[01]))\..*$/) {
+			$RET = 1;
 		}
-		s/[\n\ \t]//g;
-		$ip = $_;
-	}else{
-		$ip = "-- none --";
-		$error = 1;
-		# everything else than an ip
 	}
-	return $ip, $error;
+	return ( $RET, $IP );
 }
 
 sub clean_table {
+	syslog_input("Clearing IPVS table");
 	system "/sbin/ipvsadm -C";
 }
 
@@ -173,13 +177,11 @@ sub update_ipvs {
 	# $LOCAL_WEIGHT the weight of  the server
 	my $RET = &ipvs_add_svc ($PROTOCOL,$ip,$PORT,$SCHEDULER);
 	if ( $RET !=0 ) {
-		syslog_input("FAILURE IPVS table update for $ip:$PORT to $DEST_IP:$PORT");
+		syslog_input("FAILURE IPVS Add Service for $ip:$PORT");
 	}else{
-		if ( $PROTOCOL eq "a") {
-			system "/sbin/ipvsadm -a -t $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT";
-			system "/sbin/ipvsadm -a -u $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT";
-		}else{
-			system "/sbin/ipvsadm -a -$PROTOCOL $ip:$PORT -r $DEST_IP:$PORT -m -w $LOCAL_WEIGHT";
+		$RET = &ipvs_add_svr ($PROTOCOL,$ip,$PORT,$DEST_IP,$LOCAL_WEIGHT);
+		if ( $RET !=0 ) {
+			syslog_input("FAILURE IPVS Add Server for $ip:$PORT to $DEST_IP:$PORT");
 		}
 		# Do this stuff here where it actually makes sense.
 		if ( $VERBOSE eq 1 ) { 
@@ -187,6 +189,28 @@ sub update_ipvs {
 		}
 		syslog_input("SUCCESS IPVS table update for $ip:$PORT to $DEST_IP:$PORT");
 	}
+}
+
+sub int_get_ip {
+	my ($iface) = @_;
+	my ($socket, $buf, $RET, $IP, $irt );
+	my @address = ();
+	my $proto = getprotobyname('tcp');
+	my $result = socket($socket, PF_INET, SOCK_STREAM, $proto);
+	if ( !$result ) {
+		$RET = -1;
+	}else{
+		$buf = pack('a256', $iface);
+		$irt = ioctl($socket, SIOCGIFADDR(), $buf );
+		if ( $irt ) {
+			@address = unpack('x20 C4', $buf);
+			$RET = 1;
+			$IP = join('.', @address);
+		}else{
+			$RET = 0;
+		}
+	}
+	return ( $RET, $IP );
 }
 
 sub ipvs_add_svc {
@@ -209,16 +233,38 @@ sub ipvs_add_svc {
 	return($RET);
 }
 
+sub ipvs_add_svr {
+	my ($Proto, $ip, $Port, $Dstip, $Weight) = @_;
+	my $cmd = "/sbin/ipvsadm -a";
+	my ( $RET, $TRET, $URET ) = 1;
+	$Proto = lc ($Proto);
+	if ( $Proto eq "a") {
+		$TRET = &ipvs_add_svr ("t", $ip, $Port, $Dstip, $Weight);
+		if ( $TRET == 0 ) {
+			$URET = &ipvs_add_svr ("u", $ip, $Port, $Dstip, $Weight);
+		}
+		if ( $TRET == 0 && $URET == 0 ) {
+			$RET = 0;
+		}
+	}else{
+		$cmd = $cmd . " -$Proto $ip:$Port -r $Dstip:$Port -m -w $Weight";
+		$RET = system "$cmd";
+	}
+	return($RET);
+}
+
 sub various_info {
-	print ("Configuration\n");
-	print ("Verbose mode = $VERBOSE\n");
-	print ("Disable RFC 1918 Checks = $BYPASS_CHECK_MODE\n");
-	print ("Error code = $error\n");
+	print "Configuration\n";
+	print "Verbose mode = $VERBOSE\n";
+	print "SYSLOG Output = $SYSLOG_OUT\n";
+	print "Interface = $IFACE\n";
+	print "Disable RFC 1918 Checks = $BYPASS_CHECK_MODE\n";
+	print "Current Error code = $error\n";
 }
 
 sub comments {
 	print ("IPVS table update: ");
-	print ("On Int. $IFACE $ip:$PORT to $DEST_IP:$PORT\n");
+	print ("Int=$IFACE $ip:$PORT to $DEST_IP:$PORT\n");
 	print ("Proto=$PROTOCOL Weight=$LOCAL_WEIGHT Scheduler=$SCHEDULER\n");
 }
 
