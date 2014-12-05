@@ -120,7 +120,7 @@ if ( defined $xmlOK ){
 		if ( $error eq 0 ) {
 			clean_table();
 			for ($i = 0; $i < $ConfBC; $i++) {
-				xml_update();
+				xml_update($i);
 			}
 		}else{
 			syslog_input('error', "IP on $host is a private IP. Cannot Update");
@@ -264,10 +264,11 @@ sub comments {
 }
 
 sub xml_update {
+	my $i = shift;
 	my $p = 0;
 	$PROTOCOL = $xmlconf->{conf}->[$i]->{protocol}->[0];	# get protocol type
 	$DEST_IP = $xmlconf->{conf}->[$i]->{destination}->[0];	# get destination
-	$PORT = $xmlconf->{conf}->[$i]->{port}->[$p];		# get port value
+	$PORT = $xmlconf->{conf}->[$i]->{port}->[0];		# get port value
 	$SCHEDULER = $xmlconf->{conf}->[$i]->{scheduler}->[0];	# get scheduler type    
 	if ( $SCHEDULER eq ( "wrr" || "wlc" ) ){
 		$WEIGHT = $xmlconf->{conf}->[$i]->{weight}->[0];	# get the weight of servers
@@ -275,14 +276,9 @@ sub xml_update {
 			$LOCAL_WEIGHT = $WEIGHT 
 		}
 	}
-	if ($PORT eq "") {
-		$PORT = $xmlconf->{conf}->[$i]->{port};
+	while ( $xmlconf->{conf}->[$i]->{port}->[$p] ) {
+		$PORT = $xmlconf->{conf}->[$i]->{port}->[$p];
 		update_ipvs($ip,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT);
-	}else{
-		while ( $xmlconf->{conf}->[$i]->{port}->[$p] ) {
-			$PORT = $xmlconf->{conf}->[$i]->{port}->[$p];
-			update_ipvs($ip,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT);
-			$p++;
-		}
+		$p++;
 	}
 }
