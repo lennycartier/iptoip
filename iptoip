@@ -36,9 +36,8 @@ use bytes;
 # Global Vars
 my $i = 0;
 my $host = hostname();
-my ($ip, $error, $RET); 
-my $p = 0;
-my $help = 0; 
+my ($ip, $error, $RET);
+my $help = 0;
 my $ident = "[iptoip]";
 my $LOCAL_WEIGHT = "1";
 my $xmlarg = "";
@@ -129,8 +128,10 @@ if ( defined $xmlOK ){
 					&syslog_input('notice', "IPVS Add VE success");
 				}
 			}
-		}else{
+		}elsif ( $error eq 1 ) {
 			&syslog_input('error', "IP on $host is a private IP. Cannot Update");
+		}else{
+			&syslog_input('error', "Unable to get IP for $IFACE");
 		}
 	}else{
 		die "Error File $xmlEr: $xmlarg\n";
@@ -158,19 +159,23 @@ sub syslog_input {
 
 sub get_ip {
 	my $iface = shift;
+	my $RET;
 	# extract internet ip
 	my ( $OK, $IP ) = &int_get_ip($iface);
-	my $RET;
-	# Fix this use of special Var :-(
-	$_ = $IP;
-	# Assume all is well.
-	$RET = 0;
-	# Do we want RFC 1918 Checking?
-	if ( $BYPASS_CHECK_MODE ne 1 ) {
-		# RFC 1918 Check
-		# Fix this line to not req $_ :-(
-		if(/^192\.168\..*$/ || /^10\..*$/ || /^172\.((1[6-9])|(2\d)|(3[01]))\..*$/) {
-			$RET = 1;
+	if ( $OK != 1 ) {
+		$RET = $OK - 1;
+	}else{
+		# Fix this use of special Var :-(
+		$_ = $IP;
+		# Assume all is well.
+		$RET = 0;
+		# Do we want RFC 1918 Checking?
+		if ( $BYPASS_CHECK_MODE ne 1 ) {
+			# RFC 1918 Check
+			# Fix this line to not req $_ :-(
+			if(/^192\.168\..*$/ || /^10\..*$/ || /^172\.((1[6-9])|(2\d)|(3[01]))\..*$/) {
+				$RET = 1;
+			}
 		}
 	}
 	return ( $RET, $IP );
