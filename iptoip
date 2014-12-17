@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# iptoip,v 0.3.1 ( devel )
+# iptoip, v 0.3.2 ( devel )
 #
 # Copyright (C) 2001 Lenny Cartier (l.cartier@free.fr)
 # Additional Code Mangling Copyright (C) 2013-2014 Nathan Gibbs <nathan@cmpublishers.com>
@@ -59,7 +59,7 @@ GetOptions(
 
 $help && die <<END;
 
-iptoip-0.3.1 (devel), Copyright (C) 2001 Lenny Cartier (C) 2013-2014 Nathan Gibbs
+iptoip-0.3.2 (devel), Copyright (C) 2001 Lenny Cartier (C) 2013-2014 Nathan Gibbs
 iptoip comes with ABSOLUTELY NO WARRANTY; 
 This is free software, and you are welcome to 
 redistribute it under the terms of the GNU GPL.

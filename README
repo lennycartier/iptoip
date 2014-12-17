@@ -50,6 +50,6 @@ set to 1 ( _needed_ to have a correct ipvsadm table).
 - You must choose between udp and tcp protocol with the <protocol>[u|t]</protocol> tag.
 
 BUGS :
-- Feel free to send bugs report and suggestions to l.cartier@gmx.net
+- Feel free to send bugs report and suggestions to <nathan@cmpublishers.com>
 
-# revised 12/12/2001
+# revised 12/17/2014
