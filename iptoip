@@ -189,17 +189,18 @@ sub update_ipvs {
 	# $LOCAL_WEIGHT the weight of  the server
 	my $RET = &ipvs_add_svc ($PROTOCOL,$ip,$PORT,$SCHEDULER);
 	if ( $RET !=0 ) {
-		&syslog_input('error',"IPVS VE Add Service failed for $ip:$PORT");
+		&syslog_input('error',"IPVS VE Add Service failed $ip:$PORT Proto:$PROTOCOL Sched:$SCHEDULER");
 	}else{
+		&syslog_input('notice',"IPVS VE Add Service $ip:$PORT Proto:$PROTOCOL Sched:$SCHEDULER");
 		$RET = &ipvs_add_svr ($PROTOCOL,$ip,$PORT,$DEST_IP,$LOCAL_WEIGHT);
 		if ( $RET !=0 ) {
-			&syslog_input('error',"IPVS VE Add Server failed for $DEST_IP:$PORT");
+			&syslog_input('error',"IPVS VE Add Server failed $DEST_IP:$PORT");
 		}else{
 			# Do this stuff here where it actually makes sense.
-			if ( $VERBOSE eq 1 ) { 
+			if ( $VERBOSE eq 1 ) {
 				comments();
 			}
-			&syslog_input('notice',"IPVS VE Add $ip:$PORT to $DEST_IP:$PORT");
+			&syslog_input('notice',"IPVS VE Add Server $DEST_IP:$PORT");
 		}
 	}
 	if ($RET == 0){
