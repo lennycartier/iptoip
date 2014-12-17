@@ -105,7 +105,10 @@ if ( -e $xmlarg ) {
 }
 if ( defined $xmlOK ){
 	if ( $xmlOK == 1 ) {
-		read_conf();
+		$BYPASS_CHECK_MODE = $xmlconf->{nocheck}->[0];
+		$SYSLOG_OUT =  $xmlconf->{syslog}->[0];
+		$VERBOSE = $xmlconf->{verbose}->[0];
+		$IFACE = $xmlconf->{iface}->[0];
 		$ConfBC = scalar(@{$xmlconf->{conf}});
 		($error, $ip) = &get_ip($IFACE);
 		if ( $VERBOSE eq 1 ) {
@@ -138,13 +141,6 @@ if ( defined $xmlOK ){
 	}
 }else{
 	die "Error File $xmlEr: $xmlarg: $@";
-}
-
-sub read_conf {
-	$BYPASS_CHECK_MODE = $xmlconf->{nocheck}->[0];
-	$SYSLOG_OUT =  $xmlconf->{syslog}->[0];
-	$VERBOSE = $xmlconf->{verbose}->[0];
-	$IFACE = $xmlconf->{iface}->[0];
 }
 
 sub syslog_input {
