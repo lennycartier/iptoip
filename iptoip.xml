@@ -4,7 +4,7 @@
 	<nocheck>1</nocheck>
 	<verbose>1</verbose>
 	<syslog>1</syslog>
-	
+	<logfile>/var/log/iptoip.log</logfile>
 
 	<conf>
 		<origin>192.168.1.1</origin>

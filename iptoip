@@ -43,7 +43,7 @@ my $LOCAL_WEIGHT = "1";
 my $xmlarg = "";
 
 # Configuration Vars
-my ( $BYPASS_CHECK_MODE, $SYSLOG_OUT, $VERBOSE, $IFACE );
+my ( $BYPASS_CHECK_MODE, $SYSLOG_OUT, $VERBOSE, $IFACE, $LOGFILE );
 # ipvsadm args
 my ( $DEST_IP, $PORT, $SCHEDULER, $PROTOCOL );
 my $WEIGHT = $LOCAL_WEIGHT;
@@ -111,10 +111,15 @@ if ( defined $xmlOK ){
 		$IFACE = $xmlconf->{iface}->[0];
 		$ConfBC = scalar(@{$xmlconf->{conf}});
 		($error, $ip) = &get_ip($IFACE);
+		if ( $SYSLOG_OUT != 0 ) {
+			$LOGFILE = "SYSLOG";
+		}else{
+			$LOGFILE = $xmlconf->{logfile}->[0];
+		}
 		if ( $VERBOSE eq 1 ) {
 			print "Configuration\n";
 			print "Verbose mode = $VERBOSE\n";
-			print "SYSLOG Output = $SYSLOG_OUT\n";
+			print "Log Output = $LOGFILE\n";
 			print "Interface = $IFACE\n";
 			print "Disable RFC 1918 Checks = $BYPASS_CHECK_MODE\n";
 			print "Current Error code = $error\n";
@@ -146,10 +151,20 @@ if ( defined $xmlOK ){
 sub syslog_input {
 	my ($pri,$msg) = @_;
 	# output $msg to syslog
-	if ( $SYSLOG_OUT != 0 ) {
+	if ( $LOGFILE eq "SYSLOG" ) {
 		openlog $ident,'pid';
 		syslog ($pri,$msg);
 		closelog;
+	}else{
+		my $TStamp=&TimeStamp("SL",time);
+		if ( %TStamp ne "Invalid" ) {
+			open ( ALOG, ">>$LOGFILE" ) or die "Cannot open log: $!\n";
+			print ALOG "$TStamp $msg\n";
+			close ( ALOG );
+		}else{
+			# Give up and log to console.
+			print "$msg\n";
+		}
 	}
 }
 
@@ -302,4 +317,30 @@ sub xml_update {
 		}
 	}
 	return($RET);
+}
+
+# Standardized Time Stamps.
+sub TimeStamp {
+	my $Type = shift;
+	my $localtime = shift;
+	my @time = localtime($localtime);
+	my @year_months = ('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec');
+	my @days_of_week = ('Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday');
+	my $Mn = @year_months[$time[4]];
+	my $Yr = $time[5] + 1900;
+	my $Dy = $time[3];
+	my $Tod = sprintf ("%.2d:%.2d:%.2d", @time[2,1,0] );
+	if ( $Type eq "ST" || $Type eq "" ) {
+		$localtime = sprintf ("%s %.d %d, %s", $Mn, $Dy, $Yr, $Tod );
+	}elsif ($Type eq "SL") {
+		$localtime = sprintf ("%s %.d %s", $Mn, $Dy, $Tod );
+	}elsif ($Type eq "TD") {
+		$localtime = sprintf ("%s %.d %d<br/>%s", $Mn, $Dy, $Yr, $Tod );
+	}elsif ($Type eq "Cookie") {
+		@time = gmtime($localtime);
+		$localtime = sprintf ("%s, %.2d-%s-%d %s GMT", @days_of_week[$time[6]], $Dy, $Mn, $Yr, $Tod );
+	}else{
+		$localtime = "Invalid";
+	}
+	return $localtime;
 }
