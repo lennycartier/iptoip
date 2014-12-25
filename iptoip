@@ -296,7 +296,7 @@ sub comments {
 
 sub xml_update {
 	my $i = shift;
-	my ( $p, $RET ) = 0;
+	my ( $iploc, $p, $RET ) = 0;
 	$PROTOCOL = $xmlconf->{conf}->[$i]->{protocol}->[0];	# get protocol type
 	$DEST_IP = $xmlconf->{conf}->[$i]->{destination}->[0];	# get destination
 	$PORT = $xmlconf->{conf}->[$i]->{port}->[0];		# get port value
@@ -307,9 +307,14 @@ sub xml_update {
 			$LOCAL_WEIGHT = $WEIGHT 
 		}
 	}
+	# origin tag support
+	$iploc = $xmlconf->{conf}->[$i]->{origin}->[0];
+	if ($iploc == 0) {
+		$iploc = $ip;
+	}
 	while ( $xmlconf->{conf}->[$i]->{port}->[$p] ) {
 		$PORT = $xmlconf->{conf}->[$i]->{port}->[$p];
-		$RET = &update_ipvs($ip,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT);
+		$RET = &update_ipvs($iploc,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT);
 		if ( $RET == 0 ) {
 			last;
 		}else{
