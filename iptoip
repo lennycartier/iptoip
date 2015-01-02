@@ -213,7 +213,9 @@ sub update_ipvs {
 		}else{
 			# Do this stuff here where it actually makes sense.
 			if ( $VERBOSE eq 1 ) {
-				comments();
+				print ("IPVS VE add: ");
+				print ("$ip:$PORT to $DEST_IP:$PORT\n");
+				print ("Int=$IFACE Proto=$PROTOCOL Scheduler=$SCHEDULER Weight=$LOCAL_WEIGHT\n");
 			}
 			&syslog_input('notice',"IPVS VE Add Server $DEST_IP:$PORT");
 		}
@@ -288,12 +290,6 @@ sub ipvs_add_svr {
 	return($RET);
 }
 
-sub comments {
-	print ("IPVS VE add: ");
-	print ("$ip:$PORT to $DEST_IP:$PORT\n");
-	print ("Int=$IFACE Proto=$PROTOCOL Scheduler=$SCHEDULER Weight=$LOCAL_WEIGHT\n");
-}
-
 sub xml_update {
 	my $i = shift;
 	my ( $iploc, $RET );
@@ -305,7 +301,7 @@ sub xml_update {
 	if ( $SCHEDULER eq ( "wrr" || "wlc" ) ){
 		$WEIGHT = $xmlconf->{conf}->[$i]->{weight}->[0];	# get the weight of servers
 		if ( $WEIGHT > "1" ) {
-			$LOCAL_WEIGHT = $WEIGHT 
+			$LOCAL_WEIGHT = $WEIGHT;
 		}
 	}
 	# origin tag support
