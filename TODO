@@ -6,4 +6,3 @@ Nathan's TODO
 	Reduce dependencies on underlying OS commands.
 	Do as much in perl as possible.
 - Review README file, Possibly update it.
-- Add support for the conf <origin> tag.

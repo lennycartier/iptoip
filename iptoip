@@ -116,11 +116,12 @@ if ( defined $xmlOK ){
 		}else{
 			$LOGFILE = $xmlconf->{logfile}->[0];
 		}
+		&syslog_input('notice',"IPVS Start");
 		if ( $VERBOSE eq 1 ) {
 			print "Configuration\n";
 			print "Verbose mode = $VERBOSE\n";
 			print "Log Output = $LOGFILE\n";
-			print "Interface = $IFACE\n";
+			print "Interface = $IFACE -> Svc IP = $ip\n";
 			print "Disable RFC 1918 Checks = $BYPASS_CHECK_MODE\n";
 			print "Current Error code = $error\n";
 		}
@@ -130,10 +131,8 @@ if ( defined $xmlOK ){
 			for ($i = 0; $i < $ConfBC; $i++) {
 				$RET = &xml_update($i);
 				if ( $RET == 0 ) {
-					&syslog_input('error', "IPVS Add VE failed");
+					&syslog_input('error', "IPVS VE Add failure aborting run");
 					last;
-				}else{
-					&syslog_input('notice', "IPVS Add VE success");
 				}
 			}
 		}elsif ( $error eq 1 ) {
@@ -141,7 +140,9 @@ if ( defined $xmlOK ){
 		}else{
 			&syslog_input('error', "Unable to get IP for $IFACE");
 		}
+		&syslog_input('notice',"IPVS Stop");
 	}else{
+		&syslog_input('error',"Error File $xmlEr: $xmlarg");
 		die "Error File $xmlEr: $xmlarg\n";
 	}
 }else{
@@ -193,7 +194,7 @@ sub get_ip {
 }
 
 sub clean_table {
-	syslog_input('notice',"IPVS Clearing table");
+	&syslog_input('notice',"IPVS Clearing table");
 	system "/sbin/ipvsadm -C";
 }
 
@@ -211,10 +212,9 @@ sub update_ipvs {
 		if ( $RET !=0 ) {
 			&syslog_input('error',"IPVS VE Add Server failed $DEST_IP:$PORT");
 		}else{
-			# Do this stuff here where it actually makes sense.
 			if ( $VERBOSE eq 1 ) {
-				print ("IPVS VE add: ");
-				print ("$ip:$PORT to $DEST_IP:$PORT\n");
+				print ("IPVS VE add Port:$PORT ");
+				print ("$ip to $DEST_IP:\n");
 				print ("Int=$IFACE Proto=$PROTOCOL Scheduler=$SCHEDULER Weight=$LOCAL_WEIGHT\n");
 			}
 			&syslog_input('notice',"IPVS VE Add Server $DEST_IP:$PORT");
@@ -308,13 +308,18 @@ sub xml_update {
 	$iploc = $xmlconf->{conf}->[$i]->{origin}->[0];
 	if ( !defined $iploc ) {
 		$iploc = $ip;
+	}else{
+		&syslog_input('notice', "IPVS VE Svc IP override");
 	}
 	while ( $xmlconf->{conf}->[$i]->{port}->[$p] ) {
 		$PORT = $xmlconf->{conf}->[$i]->{port}->[$p];
+		&syslog_input('notice', "IPVS VE MAP Port:$PORT $iploc to $DEST_IP");
 		$RET = &update_ipvs($iploc,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT);
 		if ( $RET == 0 ) {
+			&syslog_input('error', "IPVS VE Add MAP failed");
 			last;
 		}else{
+			&syslog_input('notice', "IPVS VE Add MAP success");
 			$p++;
 		}
 	}
