@@ -36,7 +36,7 @@ use bytes;
 # Global Vars
 my $i = 0;
 my $host = hostname();
-my ($ip, $error, $RET);
+my ($Svcip, $error, $RET);
 my $help = 0;
 my $ident = "[iptoip]";
 my $LOCAL_WEIGHT = "1";
@@ -110,7 +110,7 @@ if ( defined $xmlOK ){
 		$VERBOSE = $xmlconf->{verbose}->[0];
 		$IFACE = $xmlconf->{iface}->[0];
 		$ConfBC = scalar(@{$xmlconf->{conf}});
-		($error, $ip) = &get_ip($IFACE);
+		($error, $Svcip) = &get_ip($IFACE);
 		if ( $SYSLOG_OUT != 0 ) {
 			$LOGFILE = "SYSLOG";
 		}else{
@@ -121,7 +121,7 @@ if ( defined $xmlOK ){
 			print "Configuration\n";
 			print "Verbose mode = $VERBOSE\n";
 			print "Log Output = $LOGFILE\n";
-			print "Interface = $IFACE -> Svc IP = $ip\n";
+			print "Interface = $IFACE -> Svc IP = $Svcip\n";
 			print "Disable RFC 1918 Checks = $BYPASS_CHECK_MODE\n";
 			print "Current Error code = $error\n";
 		}
@@ -215,7 +215,10 @@ sub update_ipvs {
 			if ( $VERBOSE eq 1 ) {
 				print ("IPVS VE add Port:$PORT ");
 				print ("$ip to $DEST_IP:\n");
-				print ("Int=$IFACE Proto=$PROTOCOL Scheduler=$SCHEDULER Weight=$LOCAL_WEIGHT\n");
+				if ( $Svcip eq $ip ) {
+					print "Int=$IFACE ";
+				}
+				print ("Proto=$PROTOCOL Scheduler=$SCHEDULER Weight=$LOCAL_WEIGHT\n");
 			}
 			&syslog_input('notice',"IPVS VE Add Server $DEST_IP:$PORT");
 		}
@@ -307,7 +310,7 @@ sub xml_update {
 	# origin tag support
 	$iploc = $xmlconf->{conf}->[$i]->{origin}->[0];
 	if ( !defined $iploc ) {
-		$iploc = $ip;
+		$iploc = $Svcip;
 	}else{
 		&syslog_input('notice', "IPVS VE Svc IP override");
 	}
