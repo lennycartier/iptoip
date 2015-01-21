@@ -199,7 +199,7 @@ sub clean_table {
 }
 
 sub update_ipvs {
-	my ($ip,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT) = @_;
+	my ($ip,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT,$PF) = @_;
 	# update ipvsadm table with specified $ip, $DEST_IP, and $PORT
 	# $SCHEDULER for load balancing
 	# $LOCAL_WEIGHT the weight of  the server
@@ -208,7 +208,7 @@ sub update_ipvs {
 		&syslog_input('error',"IPVS VE Add Service failed $ip:$PORT Proto:$PROTOCOL Sched:$SCHEDULER");
 	}else{
 		&syslog_input('notice',"IPVS VE Add Service $ip:$PORT Proto:$PROTOCOL Sched:$SCHEDULER");
-		$RET = &ipvs_add_svr ($PROTOCOL,$ip,$PORT,$DEST_IP,$LOCAL_WEIGHT);
+		$RET = &ipvs_add_svr ($PROTOCOL,$ip,$PORT,$DEST_IP,$LOCAL_WEIGHT,$PF);
 		if ( $RET !=0 ) {
 			&syslog_input('error',"IPVS VE Add Server failed $DEST_IP:$PORT");
 		}else{
@@ -218,7 +218,7 @@ sub update_ipvs {
 				if ( $Svcip eq $ip ) {
 					print "Int=$IFACE ";
 				}
-				print ("Proto=$PROTOCOL Scheduler=$SCHEDULER Weight=$LOCAL_WEIGHT\n");
+				print ("Proto=$PROTOCOL Scheduler=$SCHEDULER Weight=$LOCAL_WEIGHT Forward=$PF\n");
 			}
 			&syslog_input('notice',"IPVS VE Add Server $DEST_IP:$PORT");
 		}
@@ -274,28 +274,41 @@ sub ipvs_add_svc {
 }
 
 sub ipvs_add_svr {
-	my ($Proto, $ip, $Port, $Dstip, $Weight) = @_;
+	my ($Proto, $ip, $Port, $Dstip, $Weight, $PF) = @_;
 	my $cmd = "/sbin/ipvsadm -a";
 	my ( $RET, $TRET, $URET ) = 1;
 	$Proto = lc ($Proto);
+	$PF = lc ($PF);
 	if ( $Proto eq "a") {
-		$TRET = &ipvs_add_svr ("t", $ip, $Port, $Dstip, $Weight);
+		$TRET = &ipvs_add_svr ("t", $ip, $Port, $Dstip, $Weight,$PF);
 		if ( $TRET == 0 ) {
-			$URET = &ipvs_add_svr ("u", $ip, $Port, $Dstip, $Weight);
+			$URET = &ipvs_add_svr ("u", $ip, $Port, $Dstip, $Weight,$PF);
 		}
 		if ( $TRET == 0 && $URET == 0 ) {
 			$RET = 0;
 		}
 	}else{
-		$cmd = $cmd . " -$Proto $ip:$Port -r $Dstip:$Port -m -w $Weight";
-		$RET = system "$cmd";
+		if ( $PF eq "masq" ) {
+			$PF = "-m";
+		}elsif ($PF eq "gate"){
+			$PF = "-g";
+		}elsif ($PF eq "tunl"){
+			$PF = "-i";
+		}else{
+			# Error
+			$RET = -1;
+		}
+		if ( $RET != -1 ) {
+			$cmd = $cmd . " -$Proto $ip:$Port -r $Dstip:$Port $PF -w $Weight";
+			$RET = system "$cmd";
+		}
 	}
 	return($RET);
 }
 
 sub xml_update {
 	my $i = shift;
-	my ( $iploc, $RET );
+	my ( $iploc, $PF, $RET );
 	my $p = 0;
 	$PROTOCOL = $xmlconf->{conf}->[$i]->{protocol}->[0];	# get protocol type
 	$DEST_IP = $xmlconf->{conf}->[$i]->{destination}->[0];	# get destination
@@ -314,10 +327,15 @@ sub xml_update {
 	}else{
 		&syslog_input('notice', "IPVS VE Svc IP override");
 	}
+	# forward tag support
+	$PF = $xmlconf->{conf}->[$i]->{forward}->[0];
+	if ( !defined $PF ) {
+		$PF = "Masq";
+	}
 	while ( $xmlconf->{conf}->[$i]->{port}->[$p] ) {
 		$PORT = $xmlconf->{conf}->[$i]->{port}->[$p];
 		&syslog_input('notice', "IPVS VE MAP Port:$PORT $iploc to $DEST_IP");
-		$RET = &update_ipvs($iploc,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT);
+		$RET = &update_ipvs($iploc,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT,$PF);
 		if ( $RET == 0 ) {
 			&syslog_input('error', "IPVS VE Add MAP failed");
 			last;
