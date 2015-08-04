@@ -131,18 +131,18 @@ if ( defined $xmlOK ){
 			for ($i = 0; $i < $ConfBC; $i++) {
 				$RET = &xml_update($i);
 				if ( $RET == 0 ) {
-					&syslog_input('error', "IPVS VE Add failure aborting run");
+					&syslog_input('err', "IPVS VE Add failure aborting run");
 					last;
 				}
 			}
 		}elsif ( $error eq 1 ) {
-			&syslog_input('error', "IP on $host is a private IP. Cannot Update");
+			&syslog_input('err', "IP on $host is a private IP. Cannot Update");
 		}else{
-			&syslog_input('error', "Unable to get IP for $IFACE");
+			&syslog_input('err', "Unable to get IP for $IFACE");
 		}
 		&syslog_input('notice',"IPVS Stop");
 	}else{
-		&syslog_input('error',"Error File $xmlEr: $xmlarg");
+		&syslog_input('err',"Error File $xmlEr: $xmlarg");
 		die "Error File $xmlEr: $xmlarg\n";
 	}
 }else{
@@ -157,8 +157,8 @@ sub syslog_input {
 		syslog ($pri,$msg);
 		closelog;
 	}else{
-		my $TStamp=&TimeStamp("SL",time);
-		if ( %TStamp ne "Invalid" ) {
+		my $TStamp = &TimeStamp("SL",time);
+		if ( $TStamp ne "Invalid" ) {
 			open ( ALOG, ">>$LOGFILE" ) or die "Cannot open log: $!\n";
 			print ALOG "$TStamp $msg\n";
 			close ( ALOG );
@@ -177,20 +177,29 @@ sub get_ip {
 	if ( $OK != 1 ) {
 		$RET = $OK - 1;
 	}else{
-		# Fix this use of special Var :-(
-		$_ = $IP;
 		# Assume all is well.
 		$RET = 0;
 		# Do we want RFC 1918 Checking?
 		if ( $BYPASS_CHECK_MODE ne 1 ) {
-			# RFC 1918 Check
-			# Fix this line to not req $_ :-(
-			if(/^192\.168\..*$/ || /^10\..*$/ || /^172\.((1[6-9])|(2\d)|(3[01]))\..*$/) {
-				$RET = 1;
-			}
+			$RET = &ip_rfc1918 ($IP);
 		}
 	}
 	return ( $RET, $IP );
+}
+
+sub ip_rfc1918 {
+	my $IP = shift;
+	my $RET;
+	# Fix this use of special Var :-(
+	$_ = $IP;
+	# RFC 1918 Check
+	# Fix this line to not req $_ :-(
+	if(/^192\.168\..*$/ || /^10\..*$/ || /^172\.((1[6-9])|(2\d)|(3[01]))\..*$/) {
+		$RET = 1;
+	}else{
+		$RET = 0;
+	}
+	return ($RET);
 }
 
 sub clean_table {
@@ -205,12 +214,12 @@ sub update_ipvs {
 	# $LOCAL_WEIGHT the weight of  the server
 	my $RET = &ipvs_add_svc ($PROTOCOL,$ip,$PORT,$SCHEDULER);
 	if ( $RET !=0 ) {
-		&syslog_input('error',"IPVS VE Add Service failed $ip:$PORT Proto:$PROTOCOL Sched:$SCHEDULER");
+		&syslog_input('err',"IPVS VE Add Service failed $ip:$PORT Proto:$PROTOCOL Sched:$SCHEDULER");
 	}else{
 		&syslog_input('notice',"IPVS VE Add Service $ip:$PORT Proto:$PROTOCOL Sched:$SCHEDULER");
 		$RET = &ipvs_add_svr ($PROTOCOL,$ip,$PORT,$DEST_IP,$LOCAL_WEIGHT,$PF);
 		if ( $RET !=0 ) {
-			&syslog_input('error',"IPVS VE Add Server failed $DEST_IP:$PORT");
+			&syslog_input('err',"IPVS VE Add Server failed $DEST_IP:$PORT");
 		}else{
 			if ( $VERBOSE eq 1 ) {
 				print ("IPVS VE add Port:$PORT ");
@@ -308,8 +317,9 @@ sub ipvs_add_svr {
 
 sub xml_update {
 	my $i = shift;
-	my ( $iploc, $PF, $RET );
+	my ( $iploc, $PF );
 	my $p = 0;
+	my $RET = 1;
 	$PROTOCOL = $xmlconf->{conf}->[$i]->{protocol}->[0];	# get protocol type
 	$DEST_IP = $xmlconf->{conf}->[$i]->{destination}->[0];	# get destination
 	$PORT = $xmlconf->{conf}->[$i]->{port}->[0];		# get port value
@@ -325,23 +335,35 @@ sub xml_update {
 	if ( !defined $iploc ) {
 		$iploc = $Svcip;
 	}else{
-		&syslog_input('notice', "IPVS VE Svc IP override");
+		# Do we want RFC 1918 Checking?
+		if ( $BYPASS_CHECK_MODE ne 1 ) {
+			$RET = &ip_rfc1918 ($iploc);
+			if ( $RET == 1 ) {
+				&syslog_input('err', "IPVS VE Svc IP override failed");
+				$RET = 0;
+			}else{
+				&syslog_input('notice', "IPVS VE Svc IP override success");
+				$RET = 1;
+			}
+		}
 	}
-	# forward tag support
-	$PF = $xmlconf->{conf}->[$i]->{forward}->[0];
-	if ( !defined $PF ) {
-		$PF = "Masq";
-	}
-	while ( $xmlconf->{conf}->[$i]->{port}->[$p] ) {
-		$PORT = $xmlconf->{conf}->[$i]->{port}->[$p];
-		&syslog_input('notice', "IPVS VE MAP Port:$PORT $iploc to $DEST_IP");
-		$RET = &update_ipvs($iploc,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT,$PF);
-		if ( $RET == 0 ) {
-			&syslog_input('error', "IPVS VE Add MAP failed");
-			last;
-		}else{
-			&syslog_input('notice', "IPVS VE Add MAP success");
-			$p++;
+	if ( $RET == 1 ) {
+		# forward tag support
+		$PF = $xmlconf->{conf}->[$i]->{forward}->[0];
+		if ( !defined $PF ) {
+			$PF = "Masq";
+		}
+		while ( $xmlconf->{conf}->[$i]->{port}->[$p] ) {
+			$PORT = $xmlconf->{conf}->[$i]->{port}->[$p];
+			&syslog_input('notice', "IPVS VE MAP Port:$PORT $iploc to $DEST_IP");
+			$RET = &update_ipvs($iploc,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT,$PF);
+			if ( $RET == 0 ) {
+				&syslog_input('err', "IPVS VE Add MAP failed");
+				last;
+			}else{
+				&syslog_input('notice', "IPVS VE Add MAP success");
+				$p++;
+			}
 		}
 	}
 	return($RET);
