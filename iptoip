@@ -38,9 +38,9 @@ my $i = 0;
 my $host = hostname();
 my ($Svcip, $error, $RET);
 my $help = 0;
-my $ident = "[iptoip]";
-my $LOCAL_WEIGHT = "1";
-my $xmlarg = "";
+my $ident = '[iptoip]';
+my $LOCAL_WEIGHT = 1;
+my $xmlarg = '';
 
 # Configuration Vars
 my ( $BYPASS_CHECK_MODE, $SYSLOG_OUT, $VERBOSE, $IFACE, $LOGFILE );
@@ -79,8 +79,8 @@ END
 my $xs = XML::Simple->new(ForceArray => 1);
 
 # Config setup.
-if ( $xmlarg eq "" ) {
-	$xmlarg = "/etc/iptoip.xml"
+if ( $xmlarg eq '' ) {
+	$xmlarg = '/etc/iptoip.xml'
 }
 # Check Conf File Sanity.
 $xmlOK = 0;
@@ -90,18 +90,18 @@ if ( -e $xmlarg ) {
 			# Is XML OK?
 			$xmlOK = eval { $xmlconf = $xs->XMLin($xmlarg) };
 			if ($@) {
-				$xmlEr = "Format";
+				$xmlEr = 'Format';
 			}else{
 				$xmlOK = 1;
 			}
 		}else{
-			$xmlEr = "Read";
+			$xmlEr = 'Read';
 		}
 	}else{
-		$xmlEr = "Length";
+		$xmlEr = 'Length';
 	}
 }else{
-	$xmlEr = "does not exist";
+	$xmlEr = 'does not exist';
 }
 if ( $xmlOK == 1 ) {
 	$BYPASS_CHECK_MODE = $xmlconf->{nocheck}->[0];
@@ -111,11 +111,11 @@ if ( $xmlOK == 1 ) {
 	$ConfBC = scalar(@{$xmlconf->{conf}});
 	($error, $Svcip) = &get_ip($IFACE);
 	if ( $SYSLOG_OUT != 0 ) {
-		$LOGFILE = "SYSLOG";
+		$LOGFILE = 'SYSLOG';
 	}else{
 		$LOGFILE = $xmlconf->{logfile}->[0];
 	}
-	&syslog_input('notice',"IPVS Start");
+	&syslog_input('notice', 'IPVS Start');
 	if ( $VERBOSE eq 1 ) {
 		print "Configuration\n";
 		print "Verbose mode = $VERBOSE\n";
@@ -126,11 +126,11 @@ if ( $xmlOK == 1 ) {
 	}
 	if ( $error eq 0 ) {
 		clean_table();
-		&syslog_input('notice', "IPVS Adding Virtual Entities");
+		&syslog_input('notice', 'IPVS Adding Virtual Entities');
 		for ($i = 0; $i < $ConfBC; $i++) {
 			$RET = &xml_update($i);
 			if ( $RET == 0 ) {
-				&syslog_input('err', "IPVS VE Add failure aborting run");
+				&syslog_input('err', 'IPVS VE Add failure aborting run');
 				last;
 			}
 		}
@@ -139,21 +139,21 @@ if ( $xmlOK == 1 ) {
 	}else{
 		&syslog_input('err', "Unable to get IP for $IFACE");
 	}
-	&syslog_input('notice',"IPVS Stop");
+	&syslog_input('notice', 'IPVS Stop');
 }else{
-	&syslog_input('err',"Error File $xmlEr: $xmlarg");
+	&syslog_input('err', "Error File $xmlEr: $xmlarg");
 	die "Error File $xmlEr: $xmlarg\n";
 }
 
 sub syslog_input {
 	my ($pri,$msg) = @_;
-	if ( $LOGFILE eq "SYSLOG" ) { # Log to syslog.
+	if ( $LOGFILE eq 'SYSLOG' ) { # Log to syslog.
 		openlog $ident,'pid';
 		syslog ($pri,$msg);
 		closelog;
 	}else{ # Log to file.
-		my $TStamp = &TimeStamp("SL",time);
-		if ( $TStamp ne "Invalid" ) {
+		my $TStamp = &TimeStamp('SL',time);
+		if ( $TStamp ne 'Invalid' ) {
 			open ( ALOG, ">>$LOGFILE" ) or die "Cannot open log: $!\n";
 			print ALOG "$TStamp $msg\n";
 			close ( ALOG );
@@ -197,7 +197,7 @@ sub ip_rfc1918 {
 }
 
 sub clean_table {
-	&syslog_input('notice',"IPVS Clearing table");
+	&syslog_input('notice', 'IPVS Clearing table');
 	system "/sbin/ipvsadm -C";
 }
 
@@ -208,22 +208,21 @@ sub update_ipvs {
 	# $LOCAL_WEIGHT the weight of  the server
 	my $RET = &ipvs_add_svc ($PROTOCOL,$ip,$PORT,$SCHEDULER);
 	if ( $RET !=0 ) {
-		&syslog_input('err',"IPVS VE Add Service failed $ip:$PORT Proto:$PROTOCOL Sched:$SCHEDULER");
+		&syslog_input('err', "IPVS VE Add Service failed $ip:$PORT Proto:$PROTOCOL Sched:$SCHEDULER");
 	}else{
-		&syslog_input('notice',"IPVS VE Add Service $ip:$PORT Proto:$PROTOCOL Sched:$SCHEDULER");
+		&syslog_input('notice', "IPVS VE Add Service $ip:$PORT Proto:$PROTOCOL Sched:$SCHEDULER");
 		$RET = &ipvs_add_svr ($PROTOCOL,$ip,$PORT,$DEST_IP,$LOCAL_WEIGHT,$PF);
 		if ( $RET !=0 ) {
-			&syslog_input('err',"IPVS VE Add Server failed $DEST_IP:$PORT");
+			&syslog_input('err', "IPVS VE Add Server failed $DEST_IP:$PORT");
 		}else{
 			if ( $VERBOSE eq 1 ) {
-				print ("IPVS VE add Port:$PORT ");
-				print ("$ip to $DEST_IP:\n");
+				print "IPVS VE add Port:$PORT $ip to $DEST_IP:\n";
 				if ( $Svcip eq $ip ) {
 					print "Int=$IFACE ";
 				}
-				print ("Proto=$PROTOCOL Scheduler=$SCHEDULER Weight=$LOCAL_WEIGHT Forward=$PF\n");
+				print "Proto=$PROTOCOL Scheduler=$SCHEDULER Weight=$LOCAL_WEIGHT Forward=$PF\n";
 			}
-			&syslog_input('notice',"IPVS VE Add Server $DEST_IP:$PORT");
+			&syslog_input('notice', "IPVS VE Add Server $DEST_IP:$PORT");
 		}
 	}
 	if ($RET == 0){
@@ -261,10 +260,10 @@ sub ipvs_add_svc {
 	my $cmd = "/sbin/ipvsadm -A";
 	my ( $RET, $TRET, $URET ) = 1;
 	$Proto = lc ($Proto);
-	if ( $Proto eq "a") {
-		$TRET = &ipvs_add_svc ("t", $ip, $Port, $Sched);
+	if ( $Proto eq 'a') {
+		$TRET = &ipvs_add_svc ('t', $ip, $Port, $Sched);
 		if ( $TRET == 0 ) {
-			$URET = &ipvs_add_svc ("u", $ip, $Port, $Sched);
+			$URET = &ipvs_add_svc ('u', $ip, $Port, $Sched);
 		}
 		if ( $TRET == 0 && $URET == 0 ) {
 			$RET = 0;
@@ -282,21 +281,21 @@ sub ipvs_add_svr {
 	my ( $RET, $TRET, $URET ) = 1;
 	$Proto = lc ($Proto);
 	$PF = lc ($PF);
-	if ( $Proto eq "a") {
-		$TRET = &ipvs_add_svr ("t", $ip, $Port, $Dstip, $Weight,$PF);
+	if ( $Proto eq 'a') {
+		$TRET = &ipvs_add_svr ('t', $ip, $Port, $Dstip, $Weight,$PF);
 		if ( $TRET == 0 ) {
-			$URET = &ipvs_add_svr ("u", $ip, $Port, $Dstip, $Weight,$PF);
+			$URET = &ipvs_add_svr ('u', $ip, $Port, $Dstip, $Weight,$PF);
 		}
 		if ( $TRET == 0 && $URET == 0 ) {
 			$RET = 0;
 		}
 	}else{
-		if ( $PF eq "masq" ) {
-			$PF = "-m";
-		}elsif ($PF eq "gate"){
-			$PF = "-g";
-		}elsif ($PF eq "tunl"){
-			$PF = "-i";
+		if ( $PF eq 'masq' ) {
+			$PF = '-m';
+		}elsif ($PF eq 'gate'){
+			$PF = '-g';
+		}elsif ($PF eq 'tunl'){
+			$PF = '-i';
 		}else{ # Error
 			$RET = -1;
 		}
@@ -315,9 +314,9 @@ sub xml_update {
 	my $RET = 1;
 	$PROTOCOL = $xmlconf->{conf}->[$i]->{protocol}->[0];	# get protocol type
 	$DEST_IP = $xmlconf->{conf}->[$i]->{destination}->[0];	# get destination
-	$PORT = $xmlconf->{conf}->[$i]->{port}->[0];		# get port value
-	$SCHEDULER = $xmlconf->{conf}->[$i]->{scheduler}->[0];	# get scheduler type    
-	if ( $SCHEDULER eq ( "wrr" || "wlc" ) ){
+	$PORT = $xmlconf->{conf}->[$i]->{port}->[0];			# get port value
+	$SCHEDULER = $xmlconf->{conf}->[$i]->{scheduler}->[0];	# get scheduler type
+	if ( $SCHEDULER eq ( 'wrr' || 'wlc' ) ){
 		$WEIGHT = $xmlconf->{conf}->[$i]->{weight}->[0];	# get the weight of servers
 		if ( $WEIGHT > "1" ) {
 			$LOCAL_WEIGHT = $WEIGHT;
@@ -328,14 +327,13 @@ sub xml_update {
 	if ( !defined $iploc ) {
 		$iploc = $Svcip;
 	}else{
-		# Do we want RFC 1918 Checking?
-		if ( $BYPASS_CHECK_MODE ne 1 ) {
+		if ( $BYPASS_CHECK_MODE ne 1 ) { # RFC 1918 Check
 			$RET = &ip_rfc1918 ($iploc);
 			if ( $RET == 1 ) {
-				&syslog_input('err', "IPVS VE Svc IP override failed");
+				&syslog_input('err', 'IPVS VE Svc IP override failed');
 				$RET = 0;
 			}else{
-				&syslog_input('notice', "IPVS VE Svc IP override success");
+				&syslog_input('notice', 'IPVS VE Svc IP override success');
 				$RET = 1;
 			}
 		}
@@ -344,17 +342,17 @@ sub xml_update {
 		# forward tag support
 		$PF = $xmlconf->{conf}->[$i]->{forward}->[0];
 		if ( !defined $PF ) {
-			$PF = "Masq";
+			$PF = 'Masq';
 		}
 		while ( $xmlconf->{conf}->[$i]->{port}->[$p] ) {
 			$PORT = $xmlconf->{conf}->[$i]->{port}->[$p];
 			&syslog_input('notice', "IPVS VE MAP Port:$PORT $iploc to $DEST_IP");
 			$RET = &update_ipvs($iploc,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT,$PF);
 			if ( $RET == 0 ) {
-				&syslog_input('err', "IPVS VE Add MAP failed");
+				&syslog_input('err', 'IPVS VE Add MAP failed');
 				last;
 			}else{
-				&syslog_input('notice', "IPVS VE Add MAP success");
+				&syslog_input('notice', 'IPVS VE Add MAP success');
 				$p++;
 			}
 		}
@@ -372,17 +370,17 @@ sub TimeStamp { # Standardized Time Stamps.
 	my $Yr = $time[5] + 1900;
 	my $Dy = $time[3];
 	my $Tod = sprintf ("%.2d:%.2d:%.2d", @time[2,1,0] );
-	if ( $Type eq "ST" || $Type eq "" ) {
+	if ( $Type eq 'ST' || $Type eq "" ) {
 		$localtime = sprintf ("%s %.d %d, %s", $Mn, $Dy, $Yr, $Tod );
-	}elsif ($Type eq "SL") {
+	}elsif ($Type eq 'SL') {
 		$localtime = sprintf ("%s %.d %s", $Mn, $Dy, $Tod );
-	}elsif ($Type eq "TD") {
+	}elsif ($Type eq 'TD') {
 		$localtime = sprintf ("%s %.d %d<br/>%s", $Mn, $Dy, $Yr, $Tod );
-	}elsif ($Type eq "Cookie") {
+	}elsif ($Type eq 'Cookie') {
 		@time = gmtime($localtime);
 		$localtime = sprintf ("%s, %.2d-%s-%d %s GMT", @days_of_week[$time[6]], $Dy, $Mn, $Yr, $Tod );
 	}else{
-		$localtime = "Invalid";
+		$localtime = 'Invalid';
 	}
 	return $localtime;
 }
