@@ -66,8 +66,8 @@ redistribute it under the terms of the GNU GPL.
 
 iptoip - Update an ipvsadm table
 
-Usage: iptoip -f -h --file --help 
- -f|--file		Use specified configuration file	
+Usage: iptoip -f -h --file --help
+ -f|--file		Use specified configuration file
  -h|--help		Show this help message
 
 END
@@ -103,50 +103,46 @@ if ( -e $xmlarg ) {
 }else{
 	$xmlEr = "does not exist";
 }
-if ( defined $xmlOK ){
-	if ( $xmlOK == 1 ) {
-		$BYPASS_CHECK_MODE = $xmlconf->{nocheck}->[0];
-		$SYSLOG_OUT =  $xmlconf->{syslog}->[0];
-		$VERBOSE = $xmlconf->{verbose}->[0];
-		$IFACE = $xmlconf->{iface}->[0];
-		$ConfBC = scalar(@{$xmlconf->{conf}});
-		($error, $Svcip) = &get_ip($IFACE);
-		if ( $SYSLOG_OUT != 0 ) {
-			$LOGFILE = "SYSLOG";
-		}else{
-			$LOGFILE = $xmlconf->{logfile}->[0];
-		}
-		&syslog_input('notice',"IPVS Start");
-		if ( $VERBOSE eq 1 ) {
-			print "Configuration\n";
-			print "Verbose mode = $VERBOSE\n";
-			print "Log Output = $LOGFILE\n";
-			print "Interface = $IFACE -> Svc IP = $Svcip\n";
-			print "Disable RFC 1918 Checks = $BYPASS_CHECK_MODE\n";
-			print "Current Error code = $error\n";
-		}
-		if ( $error eq 0 ) {
-			clean_table();
-			&syslog_input('notice', "IPVS Adding Virtual Entities");
-			for ($i = 0; $i < $ConfBC; $i++) {
-				$RET = &xml_update($i);
-				if ( $RET == 0 ) {
-					&syslog_input('err', "IPVS VE Add failure aborting run");
-					last;
-				}
-			}
-		}elsif ( $error eq 1 ) {
-			&syslog_input('err', "IP on $host is a private IP. Cannot Update");
-		}else{
-			&syslog_input('err', "Unable to get IP for $IFACE");
-		}
-		&syslog_input('notice',"IPVS Stop");
+if ( $xmlOK == 1 ) {
+	$BYPASS_CHECK_MODE = $xmlconf->{nocheck}->[0];
+	$SYSLOG_OUT =  $xmlconf->{syslog}->[0];
+	$VERBOSE = $xmlconf->{verbose}->[0];
+	$IFACE = $xmlconf->{iface}->[0];
+	$ConfBC = scalar(@{$xmlconf->{conf}});
+	($error, $Svcip) = &get_ip($IFACE);
+	if ( $SYSLOG_OUT != 0 ) {
+		$LOGFILE = "SYSLOG";
 	}else{
-		&syslog_input('err',"Error File $xmlEr: $xmlarg");
-		die "Error File $xmlEr: $xmlarg\n";
+		$LOGFILE = $xmlconf->{logfile}->[0];
 	}
+	&syslog_input('notice',"IPVS Start");
+	if ( $VERBOSE eq 1 ) {
+		print "Configuration\n";
+		print "Verbose mode = $VERBOSE\n";
+		print "Log Output = $LOGFILE\n";
+		print "Interface = $IFACE -> Svc IP = $Svcip\n";
+		print "Disable RFC 1918 Checks = $BYPASS_CHECK_MODE\n";
+		print "Current Error code = $error\n";
+	}
+	if ( $error eq 0 ) {
+		clean_table();
+		&syslog_input('notice', "IPVS Adding Virtual Entities");
+		for ($i = 0; $i < $ConfBC; $i++) {
+			$RET = &xml_update($i);
+			if ( $RET == 0 ) {
+				&syslog_input('err', "IPVS VE Add failure aborting run");
+				last;
+			}
+		}
+	}elsif ( $error eq 1 ) {
+		&syslog_input('err', "IP on $host is a private IP. Cannot Update");
+	}else{
+		&syslog_input('err', "Unable to get IP for $IFACE");
+	}
+	&syslog_input('notice',"IPVS Stop");
 }else{
-	die "Error File $xmlEr: $xmlarg: $@";
+	&syslog_input('err',"Error File $xmlEr: $xmlarg");
+	die "Error File $xmlEr: $xmlarg\n";
 }
 
 sub syslog_input {
