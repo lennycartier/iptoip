@@ -59,9 +59,10 @@ GetOptions(
 
 $help && die <<END;
 
-iptoip-0.3.2 (devel), Copyright (C) 2001 Lenny Cartier (C) 2013-2014 Nathan Gibbs
-iptoip comes with ABSOLUTELY NO WARRANTY; 
-This is free software, and you are welcome to 
+iptoip-0.3.2 (devel), Copyright (C) 2001 Lenny Cartier
+                                (C) 2013-2018 Nathan Gibbs
+iptoip comes with ABSOLUTELY NO WARRANTY;
+This is free software, and you are welcome to
 redistribute it under the terms of the GNU GPL.
 
 iptoip - Update an ipvsadm table
@@ -74,8 +75,7 @@ END
 
 ###########################################################
 
-# Setup XML Parser
-# Array-ize everything
+# Setup XML Parser. Array-ize everything.
 my $xs = XML::Simple->new(ForceArray => 1);
 
 # Config setup.
@@ -147,19 +147,17 @@ if ( $xmlOK == 1 ) {
 
 sub syslog_input {
 	my ($pri,$msg) = @_;
-	# output $msg to syslog
-	if ( $LOGFILE eq "SYSLOG" ) {
+	if ( $LOGFILE eq "SYSLOG" ) { # Log to syslog.
 		openlog $ident,'pid';
 		syslog ($pri,$msg);
 		closelog;
-	}else{
+	}else{ # Log to file.
 		my $TStamp = &TimeStamp("SL",time);
 		if ( $TStamp ne "Invalid" ) {
 			open ( ALOG, ">>$LOGFILE" ) or die "Cannot open log: $!\n";
 			print ALOG "$TStamp $msg\n";
 			close ( ALOG );
-		}else{
-			# Give up and log to console.
+		}else{ # Give up and log to console.
 			print "$msg\n";
 		}
 	}
@@ -299,8 +297,7 @@ sub ipvs_add_svr {
 			$PF = "-g";
 		}elsif ($PF eq "tunl"){
 			$PF = "-i";
-		}else{
-			# Error
+		}else{ # Error
 			$RET = -1;
 		}
 		if ( $RET != -1 ) {
@@ -365,8 +362,7 @@ sub xml_update {
 	return($RET);
 }
 
-# Standardized Time Stamps.
-sub TimeStamp {
+sub TimeStamp { # Standardized Time Stamps.
 	my $Type = shift;
 	my $localtime = shift;
 	my @time = localtime($localtime);
