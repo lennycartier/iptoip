@@ -41,6 +41,8 @@ my $help = 0;
 my $ident = '[iptoip]';
 my $LOCAL_WEIGHT = 1;
 my $xmlarg = '';
+# Flags
+$DEBUG = 0;
 
 # Configuration Vars
 my ( $BYPASS_CHECK_MODE, $SYSLOG_OUT, $VERBOSE, $IFACE, $LOGFILE );
@@ -142,7 +144,7 @@ if ( $xmlOK == 1 ) {
 	&syslog_input('notice', 'IPVS Stop');
 }else{
 	&syslog_input('err', "Error File $xmlEr: $xmlarg");
-	die "Error File $xmlEr: $xmlarg\n";
+	&log_oops ( -1, "Error File $xmlEr: $xmlarg");
 }
 
 sub syslog_input {
@@ -154,11 +156,11 @@ sub syslog_input {
 	}else{ # Log to file.
 		my $TStamp = &TimeStamp('SL',time);
 		if ( $TStamp ne 'Invalid' ) {
-			open ( ALOG, ">>$LOGFILE" ) or die "Cannot open log: $!\n";
+			open ( ALOG, ">>$LOGFILE" ) or &log_oops ( -1, "Cannot open log: $!");
 			print ALOG "$TStamp $msg\n";
 			close ( ALOG );
 		}else{ # Give up and log to console.
-			print "$msg\n";
+			&log_oops ( 0, "$msg");
 		}
 	}
 }
@@ -318,7 +320,7 @@ sub xml_update {
 	$SCHEDULER = $xmlconf->{conf}->[$i]->{scheduler}->[0];	# get scheduler type
 	if ( $SCHEDULER eq ( 'wrr' || 'wlc' ) ){
 		$WEIGHT = $xmlconf->{conf}->[$i]->{weight}->[0];	# get the weight of servers
-		if ( $WEIGHT > "1" ) {
+		if ( $WEIGHT > 1 ) {
 			$LOCAL_WEIGHT = $WEIGHT;
 		}
 	}
@@ -370,7 +372,7 @@ sub TimeStamp { # Standardized Time Stamps.
 	my $Yr = $time[5] + 1900;
 	my $Dy = $time[3];
 	my $Tod = sprintf ("%.2d:%.2d:%.2d", @time[2,1,0] );
-	if ( $Type eq 'ST' || $Type eq "" ) {
+	if ( $Type eq 'ST' || $Type eq '' ) {
 		$localtime = sprintf ("%s %.d %d, %s", $Mn, $Dy, $Yr, $Tod );
 	}elsif ($Type eq 'SL') {
 		$localtime = sprintf ("%s %.d %s", $Mn, $Dy, $Tod );
@@ -383,4 +385,15 @@ sub TimeStamp { # Standardized Time Stamps.
 		$localtime = 'Invalid';
 	}
 	return $localtime;
+}
+
+sub log_oops {
+	my ($lvl, $msg) = (@_);
+	if ($lvl == -1) { # Critical Error
+		die "$msg\n";
+	}else{ # Log to STDERR
+		if ($DEBUG >= $lvl) {
+			warn "$msg\n";
+		}
+	}
 }
