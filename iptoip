@@ -111,13 +111,11 @@ if ( $xmlOK == 1 ) {
 	$VERBOSE = $xmlconf->{verbose}->[0];
 	$IFACE = $xmlconf->{iface}->[0];
 	$ConfBC = scalar(@{$xmlconf->{conf}});
-	($error, $Svcip) = &get_ip($IFACE);
 	if ( $SYSLOG_OUT != 0 ) {
 		$LOGFILE = 'SYSLOG';
 	}else{
 		$LOGFILE = $xmlconf->{logfile}->[0];
 	}
-	&syslog_input('notice', 'IPVS Start');
 	if ( $VERBOSE eq 1 ) {
 		print "Configuration\n";
 		print "Verbose mode = $VERBOSE\n";
@@ -126,25 +124,26 @@ if ( $xmlOK == 1 ) {
 		print "Disable RFC 1918 Checks = $BYPASS_CHECK_MODE\n";
 		print "Current Error code = $error\n";
 	}
-	if ( $error eq 0 ) {
+	&log_oops('notice', 'IPVS Start');
+	($error, $Svcip) = &get_ip($IFACE);
+	if ( $error == 0 ) {
 		clean_table();
-		&syslog_input('notice', 'IPVS Adding Virtual Entities');
+		&log_oops('notice', 'IPVS Adding Virtual Entities');
 		for ($i = 0; $i < $ConfBC; $i++) {
 			$RET = &xml_update($i);
 			if ( $RET == 0 ) {
-				&syslog_input('err', 'IPVS VE Add failure aborting run');
+				&log_oops('err', 'IPVS VE Add failure aborting run');
 				last;
 			}
 		}
-	}elsif ( $error eq 1 ) {
-		&syslog_input('err', "IP on $host is a private IP. Cannot Update");
+	}elsif ( $error == 1 ) {
+		&log_oops('err', "IP on $host is a private IP. Cannot Update");
 	}else{
-		&syslog_input('err', "Unable to get IP for $IFACE");
+		&log_oops('err', "Unable to get IP for $IFACE");
 	}
-	&syslog_input('notice', 'IPVS Stop');
+	&log_oops('notice', 'IPVS Stop');
 }else{
-	&syslog_input('err', "Error File $xmlEr: $xmlarg");
-	&log_oops ( -1, "Error File $xmlEr: $xmlarg");
+	&log_oops('crit', "Error File $xmlEr: $xmlarg");
 }
 
 sub get_ip {
@@ -364,7 +363,7 @@ sub TimeStamp { # Standardized Time Stamps.
 		@time = gmtime($localtime);
 		$localtime = sprintf ("%s, %.2d-%s-%d %s GMT", @days_of_week[$time[6]], $Dy, $Mn, $Yr, $Tod );
 	}else{
-		$localtime = 'Invalid';
+		$localtime = undef;
 	}
 	return $localtime;
 }
@@ -400,7 +399,7 @@ sub syslog_input {
 		closelog;
 	}else{ # Log to file.
 		my $TStamp = &TimeStamp('SL',time);
-		if ( $TStamp ne 'Invalid' ) {
+		if ( defined $TStamp ) {
 			open ( ALOG, ">>$LOGFILE" ) or &log_oops ( -1, "Cannot open log: $!");
 			print ALOG "$TStamp $msg\n";
 			close ( ALOG );
