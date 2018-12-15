@@ -369,6 +369,7 @@ sub TimeStamp { # Standardized Time Stamps.
 	return $localtime;
 }
 
+# Status Reporting Subs
 sub log_oops {
 	my ($lvl, $msg) = (@_);
 	if ($lvl == -1) { # Critical Error
@@ -382,7 +383,13 @@ sub log_oops {
 
 sub syslog_input {
 	my ($pri,$msg) = @_;
-	if ( $LOGFILE eq 'SYSLOG' ) { # Log to syslog.
+	if ( !defined $LOGFILE ) { # Log to console.
+		if ( $pri eq 'crit' ) { # Catch crit.
+			&log_oops ( -1, $msg);
+		}else{
+			&log_oops ( 0, $msg );
+		}
+	}elsif ( $LOGFILE eq 'SYSLOG' ) { # Log to syslog.
 		openlog $ident,'pid';
 		syslog ($pri,$msg);
 		closelog;
@@ -392,8 +399,8 @@ sub syslog_input {
 			open ( ALOG, ">>$LOGFILE" ) or &log_oops ( -1, "Cannot open log: $!");
 			print ALOG "$TStamp $msg\n";
 			close ( ALOG );
-		}else{ # Give up and log to console.
-			&log_oops ( 0, "$msg");
+		}else{ # Give up & log to console.
+			&log_oops ( 0, $msg);
 		}
 	}
 }
