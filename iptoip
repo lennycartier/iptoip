@@ -372,9 +372,14 @@ sub TimeStamp { # Standardized Time Stamps.
 # Status Reporting Subs
 sub log_oops {
 	my ($lvl, $msg) = (@_);
-	if ($lvl == -1) { # Critical Error
+	if ( $lvl!~m/^-?\d+$/ ) { # lvl is text not # Log it.
+		&syslog_input($lvl, $msg);
+		if ( $lvl eq 'crit' ) { # Catch crit.
+			&log_oops ( -1, $msg);
+		}
+	}elsif ($lvl == -1) { # Critical Error!
 		die "$msg\n";
-	}else{ # Log to STDERR
+	}else{ # Log to STDERR.
 		if ($DEBUG >= $lvl) {
 			warn "$msg\n";
 		}
