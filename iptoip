@@ -147,24 +147,6 @@ if ( $xmlOK == 1 ) {
 	&log_oops ( -1, "Error File $xmlEr: $xmlarg");
 }
 
-sub syslog_input {
-	my ($pri,$msg) = @_;
-	if ( $LOGFILE eq 'SYSLOG' ) { # Log to syslog.
-		openlog $ident,'pid';
-		syslog ($pri,$msg);
-		closelog;
-	}else{ # Log to file.
-		my $TStamp = &TimeStamp('SL',time);
-		if ( $TStamp ne 'Invalid' ) {
-			open ( ALOG, ">>$LOGFILE" ) or &log_oops ( -1, "Cannot open log: $!");
-			print ALOG "$TStamp $msg\n";
-			close ( ALOG );
-		}else{ # Give up and log to console.
-			&log_oops ( 0, "$msg");
-		}
-	}
-}
-
 sub get_ip {
 	my $iface = shift;
 	my $RET;
@@ -394,6 +376,24 @@ sub log_oops {
 	}else{ # Log to STDERR
 		if ($DEBUG >= $lvl) {
 			warn "$msg\n";
+		}
+	}
+}
+
+sub syslog_input {
+	my ($pri,$msg) = @_;
+	if ( $LOGFILE eq 'SYSLOG' ) { # Log to syslog.
+		openlog $ident,'pid';
+		syslog ($pri,$msg);
+		closelog;
+	}else{ # Log to file.
+		my $TStamp = &TimeStamp('SL',time);
+		if ( $TStamp ne 'Invalid' ) {
+			open ( ALOG, ">>$LOGFILE" ) or &log_oops ( -1, "Cannot open log: $!");
+			print ALOG "$TStamp $msg\n";
+			close ( ALOG );
+		}else{ # Give up and log to console.
+			&log_oops ( 0, "$msg");
 		}
 	}
 }
