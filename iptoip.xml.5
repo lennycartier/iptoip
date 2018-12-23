@@ -1,4 +1,4 @@
-.TH "iptoip.xml" "5" "12 December 2001" "Lenny Cartier" "Networking"
+.TH "iptoip.xml" "5" "23 December 2018" "Nathan Gibbs" "Networking"
 .SH "NAME"
 iptoip.xml \- configuration file for iptoip
 .SH "DESCRIPTION"
@@ -13,8 +13,10 @@ It might look as follows:
 <config>
 	<iface>ppp0</iface>
 	<nocheck>0</nocheck>
+	<rfc1918>2</rfc1918>
 	<verbose>1</verbose>
 	<syslog>1</syslog>
+	<logfile>/var/log/iptoip.log</logfile>
 
 	<conf>
 		<origin>192.168.1.1</origin>
@@ -36,52 +38,71 @@ It might look as follows:
 </config>
 .fi 
 .LP 
-This configuration file specifies what value should iptoip use
-to set up the ipvsadm table at first boot or \- more useful \- at
-each network connnection.
+This configuration file specifies what values iptoip should use to set up the 
+ipvsadm table at boot or on network interface IP changes.
 .LP 
 The goal is to have a simple file to set up a comprehensive 
 ipvsadm table.
 .SH "XML ENTRIES"
-Here is the possible \- some mandatory \- keywords :
+Here is the possible keywords :
+.br
+A trailing \fB*\fR denotes mandatory keywords.
 .TP 
-.BI "<config>"
+.BI "<config>"*
 Begin the config file.
 .TP 
-.BI "<iface>"
+.BI "<iface>"*
 Use this interface (ppp0, eth0...)
 .TP 
-.BI "<nocheck>" 
+.BI "<nocheck> "DEPRECATED
 1/0 ; Enable/disable some checking procedures during iptoip launch.
-Ie, if the used interface is private or public.
+Ie, if the used interface is private or public. \fbWill be removed in future
+release.\fr
 .TP 
-.BI "<verbose>" 
+.BI "<rfc1918>"*
+Control RFC 1918 checks during iptoip launch.
+Ie, Are the service IPs private or public?
+.br
+0 ; None.
+.br
+1 ; Interface.
+.br
+2 ; Interface & Origin tags.
+.TP 
+.BI "<verbose>"*
 1/0 ; Display a report on screen when launched.
 .TP 
-.BI "<syslog>"
-1/0 ; Issue a message in syslog facility at every launch.
+.BI "<syslog>"*
+1/0 ; Log to syslog facility at launch.
+.br
+Overrides <logfile>
+.TP 
+.BI "<logfile>"
+path/file ; Log to file at launch.
 .TP 
 .BI "<conf>"
-Start a conf.
+Start a conf block.
+.br
+A trailing \fB**\fR denotes mandatory keywords.
 .TP 
 .BI "<origin>"
 ip address ; An alternate ip adress to start from. Maybe there is an active internet
 connection but the forwarding should start from a private ip adresss.
 .TP 
-.BI "<protocol>"
+.BI "<protocol>"**
 Choose between udp or tcp protocol.
 .TP
-.BI "<scheduler>" 
+.BI "<scheduler>"**
 wrr|wlc ; The scheduling method to use. See ipvsadm doc for more info.
 .TP 
-.BI "<destination>"
+.BI "<destination>"**
 ip adress ; The destination of the forwarding.
 .TP 
 .BI "<weight>" 
 number ; Describe the "weight" of the destination box. The box has more 
 weight when it has more power. 
 .TP 
-.BI "<port>"
+.BI "<port>"**
 number ; The port numbers to use. Incoming connection from <port> are going
 to <port>.
 .TP 

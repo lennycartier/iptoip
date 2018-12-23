@@ -45,7 +45,7 @@ my $xmlarg = '';
 $DEBUG = 0;
 
 # Configuration Vars
-my ( $BYPASS_CHECK_MODE, $SYSLOG_OUT, $VERBOSE, $IFACE, $LOGFILE );
+my ( $BYPASS_CHECK_MODE, $IFACE, $LOGFILE, $RFC1918, $SYSLOG_OUT, $VERBOSE );
 # ipvsadm args
 my ( $DEST_IP, $PORT, $SCHEDULER, $PROTOCOL );
 my $WEIGHT = $LOCAL_WEIGHT;
@@ -106,7 +106,17 @@ if ( -e $xmlarg ) {
 	$xmlEr = 'does not exist';
 }
 if ( $xmlOK == 1 ) {
-	$BYPASS_CHECK_MODE = $xmlconf->{nocheck}->[0];
+	$RFC1918 = $xmlconf->{RFC1918}->[0];
+	if ( !defined $RFC1918 ) { # Gracefully deprecate <nocheck>
+		$BYPASS_CHECK_MODE = $xmlconf->{nocheck}->[0];
+		if ( $BYPASS_CHECK_MODE == 0 ) {
+			$RFC1918 = 1;
+		}elsif ( $BYPASS_CHECK_MODE == 1 ) {
+			$RFC1918 = 0;
+		}else{
+			$RFC1918 = 2;
+		}
+	}
 	$SYSLOG_OUT =  $xmlconf->{syslog}->[0];
 	$VERBOSE = $xmlconf->{verbose}->[0];
 	$IFACE = $xmlconf->{iface}->[0];
@@ -116,16 +126,16 @@ if ( $xmlOK == 1 ) {
 	}else{
 		$LOGFILE = $xmlconf->{logfile}->[0];
 	}
+	($error, $Svcip) = &get_ip($IFACE);
 	if ( $VERBOSE eq 1 ) {
 		print "Configuration\n";
 		print "Verbose mode = $VERBOSE\n";
 		print "Log Output = $LOGFILE\n";
 		print "Interface = $IFACE -> Svc IP = $Svcip\n";
-		print "Disable RFC 1918 Checks = $BYPASS_CHECK_MODE\n";
+		print "RFC 1918 Check Level = $RFC1918\n";
 		print "Current Error code = $error\n";
 	}
 	&log_oops('notice', 'IPVS Start');
-	($error, $Svcip) = &get_ip($IFACE);
 	if ( $error == 0 ) {
 		clean_table();
 		&log_oops('notice', 'IPVS Adding Virtual Entities');
@@ -149,15 +159,12 @@ if ( $xmlOK == 1 ) {
 sub get_ip {
 	my $iface = shift;
 	my $RET;
-	# extract internet ip
-	my ( $OK, $IP ) = &int_get_ip($iface);
+	my ( $OK, $IP ) = &int_get_ip($iface); # Get interface ip.
 	if ( $OK != 1 ) {
 		$RET = $OK - 1;
 	}else{
-		# Assume all is well.
-		$RET = 0;
-		# Do we want RFC 1918 Checking?
-		if ( $BYPASS_CHECK_MODE ne 1 ) {
+		$RET = 0; # All is well.
+		if ( $RFC1918 > 0 ) { # RFC 1918 Check.
 			$RET = &ip_rfc1918 ($IP);
 		}
 	}
@@ -310,7 +317,7 @@ sub xml_update {
 	if ( !defined $iploc ) {
 		$iploc = $Svcip;
 	}else{
-		if ( $BYPASS_CHECK_MODE ne 1 ) { # RFC 1918 Check
+		if ( $RFC1918 > 1 ) { # RFC 1918 Check.
 			$RET = &ip_rfc1918 ($iploc);
 			if ( $RET == 1 ) {
 				&syslog_input('err', 'IPVS VE Svc IP override failed');
