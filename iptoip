@@ -5,7 +5,7 @@
 # iptoip, v 0.3.2 ( devel )
 #
 # Copyright (C) 2001 Lenny Cartier (l.cartier@free.fr)
-# Additional Code Mangling Copyright (C) 2013-2014 Nathan Gibbs <nathan@cmpublishers.com>
+# Additional Code Mangling Copyright (C) 2013-2018 Nathan Gibbs <nathan@cmpublishers.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -195,7 +195,7 @@ sub update_ipvs {
 	my ($ip,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT,$PF) = @_;
 	# update ipvsadm table with specified $ip, $DEST_IP, and $PORT
 	# $SCHEDULER for load balancing
-	# $LOCAL_WEIGHT the weight of  the server
+	# $LOCAL_WEIGHT the weight of the server
 	my $RET = &ipvs_add_svc ($PROTOCOL,$ip,$PORT,$SCHEDULER);
 	if ( $RET !=0 ) {
 		&syslog_input('err', "IPVS VE Add Service failed $ip:$PORT Proto:$PROTOCOL Sched:$SCHEDULER");

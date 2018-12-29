@@ -1,13 +1,21 @@
-.TH "iptoip.xml" "5" "23 December 2018" "Nathan Gibbs" "Networking"
+.\" $Id$
+.TH "iptoip.xml" "5" "December 28, 2018" "iptoip 0.3.2" "iptoip"
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
 .SH "NAME"
 iptoip.xml \- configuration file for iptoip
+.SH SYNOPSIS
+\fBiptoip.xml\fR
 .SH "DESCRIPTION"
+.PP
+\fBiptoip.xml\fR is the configuration file for \fBiptoip\fR.
+.PP
+An XML file specifying the values \fBiptoip\fR will use to set up the IPVS
+table. This stored configuration persists across reboots or IP address changes.
 .LP 
-This file, by default
-.I /etc/iptoip.xml
-is read by iptoip (see iptoip.8).
-.LP 
-It might look as follows:
+It may look as follows:
 .IP 
 .nf 
 <config>
@@ -37,79 +45,121 @@ It might look as follows:
 	</conf>
 </config>
 .fi 
-.LP 
-This configuration file specifies what values iptoip should use to set up the 
-ipvsadm table at boot or on network interface IP changes.
-.LP 
-The goal is to have a simple file to set up a comprehensive 
-ipvsadm table.
 .SH "XML ENTRIES"
-Here is the possible keywords :
+Here are the supported tags :
 .br
-A trailing \fB*\fR denotes mandatory keywords.
+A trailing \fB*\fR denotes required tags.
 .TP 
-.BI "<config>"*
-Begin the config file.
+.B "<config>"*
+Begin the config file. This block contains global config values and VE
+( Virtual Entity ) definitions.
 .TP 
-.BI "<iface>"*
-Use this interface (ppp0, eth0...)
+.B "<iface>"*
+VE service interface (ppp0, eth0...). The IP address of this interface is the
+default VE service IP.
 .TP 
-.BI "<nocheck> "DEPRECATED
-1/0 ; Enable/disable some checking procedures during iptoip launch.
-Ie, if the used interface is private or public. \fbWill be removed in future
-release.\fr
+.B "<nocheck> "DEPRECATED
+1/0 ; Disable/Enable interface \fIRFC1918\fR check.
+\fBWill be removed in future release.\fR
 .TP 
-.BI "<rfc1918>"*
-Control RFC 1918 checks during iptoip launch.
-Ie, Are the service IPs private or public?
+.B "<rfc1918>"
+Block setup of VE service IP in \fIRFC1918\fR address space.
 .br
-0 ; None.
+0 ; Don't block.
 .br
-1 ; Interface.
+1 ; Block Interface.
 .br
-2 ; Interface & Origin tags.
-.TP 
-.BI "<verbose>"*
-1/0 ; Display a report on screen when launched.
-.TP 
-.BI "<syslog>"*
-1/0 ; Log to syslog facility at launch.
+2 ; Block Interface & Origin tags.
 .br
-Overrides <logfile>
+Defaults to 2 if not specified in \fB\iptoip.xml\fR.
 .TP 
-.BI "<logfile>"
-path/file ; Log to file at launch.
+.B "<verbose>"*
+1/0 ; Enable/disable on screen startup report.
 .TP 
-.BI "<conf>"
-Start a conf block.
+.B "<syslog>"*
+1/0 ; Enable/disable Logging to syslog facility.
 .br
-A trailing \fB**\fR denotes mandatory keywords.
+Enabling syslog overrides <logfile>
 .TP 
-.BI "<origin>"
-ip address ; An alternate ip adress to start from. Maybe there is an active internet
-connection but the forwarding should start from a private ip adresss.
+.B "<logfile>"
+path/file ; Log to file.
 .TP 
-.BI "<protocol>"**
-Choose between udp or tcp protocol.
+.B "<conf>"
+Start VE ( Virtual Entity ) definition.
+.br
+A trailing \fB**\fR denotes required VE definition tags.
+.TP 
+.B "<origin>"
+IP address ; Specify alternate VE service IP. This VE will service requests on
+the specificed IP, \fBnot\fR the default VE service IP.
+.TP 
+.B "<protocol>"**
+Set VE service protocol.
+.br
+t ; TCP.
+.br
+u ; UDP.
+.br
+a ; TCP & UDP.
 .TP
-.BI "<scheduler>"**
-wrr|wlc ; The scheduling method to use. See ipvsadm doc for more info.
+.B "<scheduler>"**
+text ; VE scheduler.
+.br
+Any scheduler supported by the LVS ( Linux Virtual Server ) kernel system.
+.br
+Currently:
+.br
+rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq ;
+.br
+See \fBipvsadm\fR(8) for more info.
 .TP 
-.BI "<destination>"**
-ip adress ; The destination of the forwarding.
+.B "<destination>"**
+IP address ; The IP of the VE server.
 .TP 
-.BI "<weight>" 
-number ; Describe the "weight" of the destination box. The box has more 
-weight when it has more power. 
+.B "<weight>" 
+number 0-65535 ; The "weight" of the VE server. Higher weights denote a more
+powerful server.
+.br
+Defaults to 1 if not specified in \fB\iptoip.xml\fR.
+.br
+Only used with the wrr and wlc schedulers.
 .TP 
-.BI "<port>"**
-number ; The port numbers to use. Incoming connection from <port> are going
-to <port>.
+.B "<port>"**
+number 0-65535 ; VE service port.
 .TP 
+.B "<forward>"
+Set VE packet forwarding method.
+.br
+masq ; Use masquerading (network access translation, or NAT).
+.br
+gate ; Use gatewaying (direct routing).
+.br
+tunl ; Use ipip encapsulation (tunneling).
+.br
+Defaults to masq if not specified in \fB\iptoip.xml\fR.
 
-
-
+.SH AUTHORS
+Lenny Cartier.
+.br
+Nathan Gibbs.
+.SH "REPORTING BUGS"
+Report bugs to <nathan@cmpublishers.com>.
+.SH COPYRIGHT
+Copyright \(co 2001 Lenny Cartier.
+.br
+Copyright \(co 2013-2018 Nathan Gibbs.
+.br
+This is free software; see the source for copying conditions. There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE;
+Licensed under the General Public License (GPL).
+.SH FILES
+.PP
+\fI/etc/iptoip.xml\fR
 .SH "SEE ALSO"
-iptoip(8), ipvsadm(8).
-.br 
-
+The LVS web site (http://www.linuxvirtualserver.org/) for more
+documentation about LVS.
+.PP
+\fBiptoip\fR(8), \fBipvsadm\fR(8), the LVS\-HOWTO.
+.PP
+DARPA Internet Request For Comments
+.IR RFC1918 .

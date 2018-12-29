@@ -7,7 +7,7 @@
 	0.3.1
 	Partail rewirte by Nathan Gibbs nathan@cmpublishers.com
 	Support for multiple conf blocks with the same destination IP/PORT
-	Support for protocol type a as a shortcut for TCP & UDP
+	Support for protocol type a as shortcut for TCP & UDP
 	Added debian startup script
 	Very basic install script
 

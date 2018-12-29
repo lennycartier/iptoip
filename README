@@ -1,11 +1,15 @@
 iptoip
 
 (c) 2001 Lenny Cartier (l.cartier@free.fr) / https://github.com/lennycartier/iptoip
-(c) 2013-2014 Nathan Gibbs <nathan@cmpublishers.com>
+(c) 2013-2018 Nathan Gibbs <nathan@cmpublishers.com>
 Licensed under the terms of the GNU GPL (see COPYING)
 
-iptoip is a perl script to help maintaining an ipvsadm table on a non fixed 
-ip adress or an intermitent connection.
+A tool designed to setup and maintain the IPVS table on Linux hosts.
+Written in perl and using an XML configuration file in conjunction with the
+ipvsadm tool, iptoip maintains the IPVS table configuration across reboots or
+IP address changes.
+Useful for maintaining an IPVS table on a dynamic IP address or intermittent
+connection.
 
 USAGE :
 
