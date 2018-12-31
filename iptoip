@@ -192,26 +192,28 @@ sub clean_table {
 
 sub update_ipvs {
 	my ($ip,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT,$PF) = @_;
+	my $IVA = 'IPVS VE Add';
 	# update ipvsadm table with specified $ip, $DEST_IP, and $PORT
 	# $SCHEDULER for load balancing
 	# $LOCAL_WEIGHT the weight of the server
 	my $RET = &ipvs_add_svc ($PROTOCOL,$ip,$PORT,$SCHEDULER);
 	if ( $RET !=0 ) {
-		&syslog_input('err', "IPVS VE Add Service failed $ip:$PORT Proto:$PROTOCOL Sched:$SCHEDULER");
+		&syslog_input('err', "$IVA Service failed $ip:$PORT Sched:$SCHEDULER");
 	}else{
-		&syslog_input('notice', "IPVS VE Add Service $ip:$PORT Proto:$PROTOCOL Sched:$SCHEDULER");
+		&syslog_input('notice', "$IVA Service $ip:$PORT Sched:$SCHEDULER");
 		$RET = &ipvs_add_svr ($PROTOCOL,$ip,$PORT,$DEST_IP,$LOCAL_WEIGHT,$PF);
 		if ( $RET !=0 ) {
-			&syslog_input('err', "IPVS VE Add Server failed $DEST_IP:$PORT");
+			&syslog_input('err', "$IVA Server failed $DEST_IP:$PORT Rank:$LOCAL_WEIGHT via $PF");
 		}else{
+			&syslog_input('notice', "$IVA Server $DEST_IP:$PORT Rank:$LOCAL_WEIGHT via $PF");
 			if ( $VERBOSE eq 1 ) {
-				print "IPVS VE add Port:$PORT $ip to $DEST_IP:\n";
+				print "$IVA Port:$PORT Proto:$PROTOCOL $ip to $DEST_IP\n";
+				print "Sched:$SCHEDULER Rank:$LOCAL_WEIGHT via $PF";
 				if ( $Svcip eq $ip ) {
-					print "Int=$IFACE ";
+					print " Int:$IFACE";
 				}
-				print "Proto=$PROTOCOL Scheduler=$SCHEDULER Weight=$LOCAL_WEIGHT Forward=$PF\n";
+				print "\n";
 			}
-			&syslog_input('notice', "IPVS VE Add Server $DEST_IP:$PORT");
 		}
 	}
 	if ($RET == 0){
@@ -331,13 +333,13 @@ sub xml_update {
 		}
 		while ( $xmlconf->{conf}->[$i]->{port}->[$p] ) {
 			$PORT = $xmlconf->{conf}->[$i]->{port}->[$p];
-			&syslog_input('notice', "IPVS VE MAP Port:$PORT $iploc to $DEST_IP");
+			&syslog_input('notice', "$IVM Port:$PORT Proto:$PROTOCOL $iploc to $DEST_IP");
 			$RET = &update_ipvs($iploc,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT,$PF);
 			if ( $RET == 0 ) {
-				&syslog_input('err', 'IPVS VE Add MAP failed');
+				&syslog_input('err', "$IVM failed");
 				last;
 			}else{
-				&syslog_input('notice', 'IPVS VE Add MAP success');
+				&syslog_input('notice', "$IVM success");
 				$p++;
 			}
 		}
