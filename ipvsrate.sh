@@ -1,6 +1,6 @@
 #! /bin/sh
-# Copyright (C) 2009-2014 Nathan Gibbs <nathan@cmpublishers.com>
-# A Script that reports the IPVS counters via email and then resets them.
+# Copyright (C) 2009-2018 Nathan Gibbs <nathan@cmpublishers.com>
+# Report the IPVS counters via email and then reset them.
 
 # Intended to be run by cron.
 # Be sure to change the reporting email address.

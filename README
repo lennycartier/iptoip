@@ -11,15 +11,14 @@ IP address changes.
 Useful for maintaining an IPVS table on a dynamic IP address or intermittent
 connection.
 
-USAGE :
-
+USAGE:
 Define a listening port in your firewall config,
-For example http ( port 80 ) :
+For example http (port 80):
 	iptables -A INPUT -i $EXTIF -p tcp -d $ANY --dport 80 -j ACCEPT
 		$EXTIF is your external interface.
 		$ANY is a range of IPs in your private network.
 		It really should be a single IP address.
-Don't ask us for advice about firewall rules, as we are not experts.
+Don't ask for advice about firewall rules, as we are not experts.
 
 Edit /etc/iptoip.xml to reflect your desired IPVS configuration.
 This XML file is well documented.
@@ -27,9 +26,13 @@ Read the included manpages.
 
 When the IP changes on $EXTIF, you can run `iptoip` to update your IPVS table
 to the new IP without changing configuration files or rewriting IPVS rules. :-)
-A good idea is to put it at the end of your reconnect script.
 
-BUGS :
+iptoip can be used in a reconnect script or as part of the netwrok interface
+initialization routines.
+On debien hosts, creating a symlink to iptoip in /etc/network/if-up.d can
+accomplish this.
+
+BUGS:
 Report bugs or suggestions to <nathan@cmpublishers.com>
 
-# revised 12/30/2018
+# revised 12/31/2018
