@@ -108,7 +108,9 @@ if ( $xmlOK == 1 ) {
 	$RFC1918 = $xmlconf->{RFC1918}->[0];
 	if ( !defined $RFC1918 ) { # Gracefully deprecate <nocheck>
 		$BYPASS_CHECK_MODE = $xmlconf->{nocheck}->[0];
-		if ( $BYPASS_CHECK_MODE == 0 ) {
+		if ( !defined $BYPASS_CHECK_MODE ) {
+			$RFC1918 = 2;
+		}elsif ( $BYPASS_CHECK_MODE == 0 ) {
 			$RFC1918 = 1;
 		}elsif ( $BYPASS_CHECK_MODE == 1 ) {
 			$RFC1918 = 0;
@@ -141,8 +143,7 @@ if ( $xmlOK == 1 ) {
 		for ($i = 0; $i < $ConfBC; $i++) {
 			$RET = &xml_update($i);
 			if ( $RET == 0 ) {
-				&log_oops('err', 'IPVS VE Add failure aborting run');
-				last;
+				&log_oops('err', 'IPVS VE Add failure');
 			}
 		}
 	}elsif ( $error == 1 ) {
@@ -279,16 +280,16 @@ sub ipvs_add_svr {
 		}
 	}else{
 		if ( $PF eq 'masq' ) {
-			$PF = '-m';
+			$PF = 'm';
 		}elsif ($PF eq 'gate'){
-			$PF = '-g';
+			$PF = 'g';
 		}elsif ($PF eq 'tunl'){
-			$PF = '-i';
+			$PF = 'i';
 		}else{ # Error
 			$RET = -1;
 		}
 		if ( $RET != -1 ) {
-			$cmd = $cmd . " -$Proto $ip:$Port -r $Dstip:$Port $PF -w $Weight";
+			$cmd = $cmd . " -$Proto $ip:$Port -r $Dstip:$Port -$PF -w $Weight";
 			$RET = system "$cmd";
 		}
 	}
@@ -300,11 +301,11 @@ sub xml_update {
 	my ( $iploc, $PF );
 	my $p = 0;
 	my $RET = 1;
+	my $IVM = 'IPVS VE MAP';
 	$PROTOCOL = $xmlconf->{conf}->[$i]->{protocol}->[0];	# get protocol type
 	$DEST_IP = $xmlconf->{conf}->[$i]->{destination}->[0];	# get destination
-	$PORT = $xmlconf->{conf}->[$i]->{port}->[0];			# get port value
 	$SCHEDULER = $xmlconf->{conf}->[$i]->{scheduler}->[0];	# get scheduler type
-	if ( $SCHEDULER eq ( 'wrr' || 'wlc' ) ){
+	if ( $SCHEDULER=~m/^w(rr|lc)$/ ){
 		$WEIGHT = $xmlconf->{conf}->[$i]->{weight}->[0];	# get the weight of servers
 		if ( $WEIGHT > 1 ) {
 			$LOCAL_WEIGHT = $WEIGHT;
@@ -315,15 +316,11 @@ sub xml_update {
 	if ( !defined $iploc ) {
 		$iploc = $Svcip;
 	}else{
-		if ( $RFC1918 > 1 ) { # RFC 1918 Check.
-			$RET = &ip_rfc1918 ($iploc);
-			if ( $RET == 1 ) {
-				&syslog_input('err', 'IPVS VE Svc IP override failed');
+		if ( $RFC1918 > 1 && &ip_rfc1918 ($iploc) ) { # RFC 1918 Check.
+				&syslog_input('err', "$IVM Svc IP to $iploc failed");
 				$RET = 0;
-			}else{
-				&syslog_input('notice', 'IPVS VE Svc IP override success');
-				$RET = 1;
-			}
+		}else{
+			&syslog_input('notice', "$IVM Svc IP to $iploc success");
 		}
 	}
 	if ( $RET == 1 ) {
