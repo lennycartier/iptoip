@@ -13,47 +13,23 @@ connection.
 
 USAGE :
 
-- First you have to define in your router firewall config a listening port,
-for example the http port (80) :
-      ipchains -A input  -i $EXTIF -p tcp -d $ANY 80 -j ACCEPT
-don't ask me for firewall rules, I'm not an expert. $EXTIF is your external
-interface, maybe ppp0 and $ANY is a range of computers in your private 
-network but can be replaced (I think it should !) by a single ip adress.
+Define a listening port in your firewall config,
+For example http ( port 80 ) :
+	iptables -A INPUT -i $EXTIF -p tcp -d $ANY --dport 80 -j ACCEPT
+		$EXTIF is your external interface.
+		$ANY is a range of IPs in your private network.
+		It really should be a single IP address.
+Don't ask us for advice about firewall rules, as we are not experts.
 
-- Next edit /etc/iptoip.xml to reflect wich port you want to forward to 
-which computer. This xml file shoulf be well documented so I hope you'll
-understand it :)
+Edit /etc/iptoip.xml to reflect your desired IPVS configuration.
+This XML file is well documented.
+Read the included manpages.
 
-	* weight = is the weight of the server up to 65536
-	* scheduler = is the scheduler/load balancing method to use
-	* origin = is where the connections are coming to
-	* destination = is where the connections are going
-	* port = ...if you ask...
-	* iface = the external interface
-	* nocheck = to check or not ?
-	* verbose = verbose or no ?
-	* syslog = use syslog ?
-
-- If you want to use another file than /etc/iptoip.xml then use the -f|--file 
-option as :
-
-	./iptoip --file toto.xml
-	or
-	./iptoip -f toto.xml
-
-- When your ip changes on $EXTIF the ipvasdm table is not coherent, the
-only thing you have to do is to launch iptoip. A good idea is to put it 
-at the end of your reconnect script.
-
-- You must specify which kind of scheduling method you want to use
-for load balancing. You can use rr,wlc,wrr,lc.
-Alternatively for weighted schedulers (wlc, wrr) you can specify a weight 
-value for the target server. The range is 2 to 65535. The default value is
-set to 1 ( _needed_ to have a correct ipvsadm table).
-
-- You must choose between udp and tcp protocol with the <protocol>[u|t]</protocol> tag.
+When the IP changes on $EXTIF, you can run `iptoip` to update your IPVS table
+to the new IP without changing configuration files or rewriting IPVS rules. :-)
+A good idea is to put it at the end of your reconnect script.
 
 BUGS :
-- Feel free to send bugs report and suggestions to <nathan@cmpublishers.com>
+Report bugs or suggestions to <nathan@cmpublishers.com>
 
-# revised 12/17/2014
+# revised 12/30/2018

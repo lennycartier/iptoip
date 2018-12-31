@@ -89,8 +89,7 @@ $xmlOK = 0;
 if ( -e $xmlarg ) {
 	if ( !-z $xmlarg ) {
 		if ( -r $xmlarg ) {
-			# Is XML OK?
-			$xmlOK = eval { $xmlconf = $xs->XMLin($xmlarg) };
+			$xmlOK = eval { $xmlconf = $xs->XMLin($xmlarg) }; # Is XML OK?
 			if ($@) {
 				$xmlEr = 'Format';
 			}else{
@@ -171,12 +170,11 @@ sub get_ip {
 	return ( $RET, $IP );
 }
 
-sub ip_rfc1918 {
+sub ip_rfc1918 { # RFC 1918 Check
 	my $IP = shift;
 	my $RET;
 	# Fix this use of special Var :-(
 	$_ = $IP;
-	# RFC 1918 Check
 	# Fix this line to not req $_ :-(
 	if(/^192\.168\..*$/ || /^10\..*$/ || /^172\.((1[6-9])|(2\d)|(3[01]))\..*$/) {
 		$RET = 1;
