@@ -6,7 +6,7 @@
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
 # Short-Description: iptoip
-# Description:       iptoip XML ipvsadm rule loader
+# Description:       iptoip XML IPVS rule loader
 ### END INIT INFO
 
 # Author: NPG <nathan@cmpublishers.con>
@@ -16,18 +16,18 @@
 
 # PATH should only include /usr/* if it runs after the mountnfs.sh script
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
-DESC="XML ipvsadm rule loader"
+DESC="XML IPVS rule loader"
 NAME=iptoip
 DAEMON=/usr/local/sbin/$NAME
 DAEMON_ARGS=""
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 
-# Check Linux Virtual Server Rules
+# Check for IPVS Rules
 [ ! -f /etc/iptoip.xml ] && exit 1
 IPVSADM_CONFIG=/etc/iptoip.xml
 
-# Check ipvsadm
+# Check for ipvsadm tool
 [ ! -x /sbin/ipvsadm ] && exit 1
 IPVSADM=/sbin/ipvsadm
 
@@ -54,9 +54,7 @@ do_start()
 	#   0 if daemon has been started
 	#   1 if daemon was already running
 	#   2 if daemon could not be started
-	echo "Flushing all current rules :" 
-	$IPVSADM -C
-	echo "Applying ipvsadm rules from $IPVSADM_CONFIG:" 
+	echo "Applying IPVS rules from $IPVSADM_CONFIG:" 
 	$DAEMON --file $IPVSADM_CONFIG
 	# Add code here, if necessary, that waits for the process to be ready
 	# to handle requests from services started subsequently which depend
