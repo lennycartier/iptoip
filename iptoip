@@ -45,9 +45,9 @@ my $xmlarg = '';
 $DEBUG = 0;
 
 # Configuration Vars
-my ( $BYPASS_CHECK_MODE, $IFACE, $LOGFILE, $RFC1918, $SYSLOG_OUT, $VERBOSE );
+my ( $BYPASS_CHECK, $IFACE, $LOGFILE, $RFC1918, $SYSLOG, $VERBOSE );
 # ipvsadm args
-my ( $DEST_IP, $PORT, $SCHEDULER, $PROTOCOL );
+my ( $DEST_IP, $PORT, $PROTOCOL );
 my $WEIGHT = $LOCAL_WEIGHT;
 # Conf check Vars
 my ( $ConfBC, $xmlOK, $xmlEr );
@@ -107,22 +107,22 @@ if ( -e $xmlarg ) {
 if ( $xmlOK == 1 ) {
 	$RFC1918 = $xmlconf->{RFC1918}->[0];
 	if ( !defined $RFC1918 ) { # Gracefully deprecate <nocheck>
-		$BYPASS_CHECK_MODE = $xmlconf->{nocheck}->[0];
-		if ( !defined $BYPASS_CHECK_MODE ) {
+		$BYPASS_CHECK = $xmlconf->{nocheck}->[0];
+		if ( !defined $BYPASS_CHECK ) {
 			$RFC1918 = 2;
-		}elsif ( $BYPASS_CHECK_MODE == 0 ) {
+		}elsif ( $BYPASS_CHECK == 0 ) {
 			$RFC1918 = 1;
-		}elsif ( $BYPASS_CHECK_MODE == 1 ) {
+		}elsif ( $BYPASS_CHECK == 1 ) {
 			$RFC1918 = 0;
 		}else{
 			$RFC1918 = 2;
 		}
 	}
-	$SYSLOG_OUT =  $xmlconf->{syslog}->[0];
+	$SYSLOG =  $xmlconf->{syslog}->[0];
 	$VERBOSE = $xmlconf->{verbose}->[0];
 	$IFACE = $xmlconf->{iface}->[0];
 	$ConfBC = scalar(@{$xmlconf->{conf}});
-	if ( $SYSLOG_OUT != 0 ) {
+	if ( $SYSLOG != 0 ) {
 		$LOGFILE = 'SYSLOG';
 	}else{
 		$LOGFILE = $xmlconf->{logfile}->[0];
@@ -190,30 +190,21 @@ sub clean_table {
 	system "/sbin/ipvsadm -C";
 }
 
-sub update_ipvs {
-	my ($ip,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT,$PF) = @_;
+sub update_ipvs { # update ipvsadm table with specified params.
+	my ($S_IP, $D_IP, $PORT, $LB_SCHED, $Weight, $PF) = @_;
 	my $IVA = 'IPVS VE Add';
-	# update ipvsadm table with specified $ip, $DEST_IP, and $PORT
-	# $SCHEDULER for load balancing
-	# $LOCAL_WEIGHT the weight of the server
-	my $RET = &ipvs_add_svc ($PROTOCOL,$ip,$PORT,$SCHEDULER);
+	my $IPS = "$S_IP:$PORT Sched:$LB_SCHED";
+	my $DPRF = "$D_IP:$PORT Rank:$Weight via $PF";
+	my $RET = &ipvs_add_svc ($PROTOCOL, $S_IP, $PORT, $LB_SCHED);
 	if ( $RET !=0 ) {
-		&syslog_input('err', "$IVA Service failed $ip:$PORT Sched:$SCHEDULER");
+		&syslog_input('err', "$IVA Service failed $IPS");
 	}else{
-		&syslog_input('notice', "$IVA Service $ip:$PORT Sched:$SCHEDULER");
-		$RET = &ipvs_add_svr ($PROTOCOL,$ip,$PORT,$DEST_IP,$LOCAL_WEIGHT,$PF);
+		&syslog_input('notice', "$IVA Service $IPS");
+		$RET = &ipvs_add_svr ($PROTOCOL, $S_IP, $PORT, $D_IP, $Weight, $PF);
 		if ( $RET !=0 ) {
-			&syslog_input('err', "$IVA Server failed $DEST_IP:$PORT Rank:$LOCAL_WEIGHT via $PF");
+			&syslog_input('err', "$IVA Server failed $DPRF");
 		}else{
-			&syslog_input('notice', "$IVA Server $DEST_IP:$PORT Rank:$LOCAL_WEIGHT via $PF");
-			if ( $VERBOSE eq 1 ) {
-				print "$IVA Port:$PORT Proto:$PROTOCOL $ip to $DEST_IP\n";
-				print "Sched:$SCHEDULER Rank:$LOCAL_WEIGHT via $PF";
-				if ( $Svcip eq $ip ) {
-					print " Int:$IFACE";
-				}
-				print "\n";
-			}
+			&syslog_input('notice', "$IVA Server $DPRF");
 		}
 	}
 	if ($RET == 0){
@@ -306,8 +297,8 @@ sub xml_update {
 	my $IVM = 'IPVS VE MAP';
 	$PROTOCOL = $xmlconf->{conf}->[$i]->{protocol}->[0];	# get protocol type
 	$DEST_IP = $xmlconf->{conf}->[$i]->{destination}->[0];	# get destination
-	$SCHEDULER = $xmlconf->{conf}->[$i]->{scheduler}->[0];	# get scheduler type
-	if ( $SCHEDULER=~m/^w(rr|lc)$/ ){
+	my $LB_SCHED = $xmlconf->{conf}->[$i]->{scheduler}->[0];	# get scheduler type
+	if ( $LB_SCHED=~m/^w(rr|lc)$/ ){
 		$WEIGHT = $xmlconf->{conf}->[$i]->{weight}->[0];	# get the weight of servers
 		if ( $WEIGHT > 1 ) {
 			$LOCAL_WEIGHT = $WEIGHT;
@@ -334,12 +325,20 @@ sub xml_update {
 		while ( $xmlconf->{conf}->[$i]->{port}->[$p] ) {
 			$PORT = $xmlconf->{conf}->[$i]->{port}->[$p];
 			&syslog_input('notice', "$IVM Port:$PORT Proto:$PROTOCOL $iploc to $DEST_IP");
-			$RET = &update_ipvs($iploc,$DEST_IP,$PORT,$SCHEDULER,$LOCAL_WEIGHT,$PF);
+			$RET = &update_ipvs($iploc,$DEST_IP,$PORT, $LB_SCHED,$LOCAL_WEIGHT,$PF);
 			if ( $RET == 0 ) {
 				&syslog_input('err', "$IVM failed");
 				last;
 			}else{
 				&syslog_input('notice', "$IVM success");
+				if ( $VERBOSE eq 1 ) {
+					print "$IVM Port:$PORT Proto:$PROTOCOL $iploc to $DEST_IP\n";
+					print "Sched:$LB_SCHED Rank:$LOCAL_WEIGHT via $PF";
+					if ( $Svcip eq $ip ) {
+						print " Int:$IFACE";
+					}
+					print "\n";
+				}
 				$p++;
 			}
 		}
