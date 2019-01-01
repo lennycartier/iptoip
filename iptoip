@@ -23,7 +23,7 @@
 #
 ###############################################################################
 
-#use strict;
+use strict;
 use Sys::Hostname;
 use Getopt::Long;
 use Sys::Syslog;
@@ -36,19 +36,15 @@ use bytes;
 # Global Vars
 my $i = 0;
 my $host = hostname();
-my ($Svcip, $error, $RET);
+my ($Svcip, $error, $RET, $xmlconf);
 my $help = 0;
 my $ident = '[iptoip]';
-my $LOCAL_WEIGHT = 1;
 my $xmlarg = '';
 # Flags
-$DEBUG = 0;
+my $DEBUG = 0;
 
 # Configuration Vars
 my ( $BYPASS_CHECK, $IFACE, $LOGFILE, $RFC1918, $SYSLOG, $VERBOSE );
-# ipvsadm args
-my ( $DEST_IP, $PORT, $PROTOCOL );
-my $WEIGHT = $LOCAL_WEIGHT;
 # Conf check Vars
 my ( $ConfBC, $xmlOK, $xmlEr );
 
@@ -174,10 +170,11 @@ sub get_ip {
 sub ip_rfc1918 { # RFC 1918 Check
 	my $IP = shift;
 	my $RET;
+	if ( $IP=~m/^(192\.168\.|10\.|172\.((1[6-9])|(2\d)|(3[01]))\.).*$/ ){
 	# Fix this use of special Var :-(
-	$_ = $IP;
+#	$_ = $IP;
 	# Fix this line to not req $_ :-(
-	if(/^192\.168\..*$/ || /^10\..*$/ || /^172\.((1[6-9])|(2\d)|(3[01]))\..*$/) {
+#	if(/^192\.168\..*$/ || /^10\..*$/ || /^172\.((1[6-9])|(2\d)|(3[01]))\..*$/) {
 		$RET = 1;
 	}else{
 		$RET = 0;
@@ -191,16 +188,16 @@ sub clean_table {
 }
 
 sub update_ipvs { # update ipvsadm table with specified params.
-	my ($S_IP, $D_IP, $PORT, $LB_SCHED, $Weight, $PF) = @_;
+	my ($Sip, $Dip, $Port, $Proto, $LBA, $Weight, $PF) = @_;
 	my $IVA = 'IPVS VE Add';
-	my $IPS = "$S_IP:$PORT Sched:$LB_SCHED";
-	my $DPRF = "$D_IP:$PORT Rank:$Weight via $PF";
-	my $RET = &ipvs_add_svc ($PROTOCOL, $S_IP, $PORT, $LB_SCHED);
+	my $IPS = "$Sip:$Port Sched:$LBA";
+	my $DPRF = "$Dip:$Port Rank:$Weight via $PF";
+	my $RET = &ipvs_add_svc ($Proto, $Sip, $Port, $LBA);
 	if ( $RET !=0 ) {
 		&syslog_input('err', "$IVA Service failed $IPS");
 	}else{
 		&syslog_input('notice', "$IVA Service $IPS");
-		$RET = &ipvs_add_svr ($PROTOCOL, $S_IP, $PORT, $D_IP, $Weight, $PF);
+		$RET = &ipvs_add_svr ($Proto, $Sip, $Port, $Dip, $Weight, $PF);
 		if ( $RET !=0 ) {
 			&syslog_input('err', "$IVA Server failed $DPRF");
 		}else{
@@ -264,9 +261,9 @@ sub ipvs_add_svr {
 	$Proto = lc ($Proto);
 	$PF = lc ($PF);
 	if ( $Proto eq 'a') {
-		$TRET = &ipvs_add_svr ('t', $ip, $Port, $Dstip, $Weight,$PF);
+		$TRET = &ipvs_add_svr ('t', $ip, $Port, $Dstip, $Weight, $PF);
 		if ( $TRET == 0 ) {
-			$URET = &ipvs_add_svr ('u', $ip, $Port, $Dstip, $Weight,$PF);
+			$URET = &ipvs_add_svr ('u', $ip, $Port, $Dstip, $Weight, $PF);
 		}
 		if ( $TRET == 0 && $URET == 0 ) {
 			$RET = 0;
@@ -291,18 +288,18 @@ sub ipvs_add_svr {
 
 sub xml_update {
 	my $i = shift;
-	my ( $iploc, $PF );
+	my ( $iploc, $PF, $Port, $Weight );
 	my $p = 0;
 	my $RET = 1;
 	my $IVM = 'IPVS VE MAP';
-	$PROTOCOL = $xmlconf->{conf}->[$i]->{protocol}->[0];	# get protocol type
-	$DEST_IP = $xmlconf->{conf}->[$i]->{destination}->[0];	# get destination
-	my $LB_SCHED = $xmlconf->{conf}->[$i]->{scheduler}->[0];	# get scheduler type
-	if ( $LB_SCHED=~m/^w(rr|lc)$/ ){
-		$WEIGHT = $xmlconf->{conf}->[$i]->{weight}->[0];	# get the weight of servers
-		if ( $WEIGHT > 1 ) {
-			$LOCAL_WEIGHT = $WEIGHT;
-		}
+	my $Proto = $xmlconf->{conf}->[$i]->{protocol}->[0];	# get protocol
+	my $Dip = $xmlconf->{conf}->[$i]->{destination}->[0];	# get destination
+	my $LBA = $xmlconf->{conf}->[$i]->{scheduler}->[0];		# get scheduler type
+	if ( $LBA=~m/^w(rr|lc)$/ ){
+		$Weight = $xmlconf->{conf}->[$i]->{weight}->[0];	# get the weight of servers
+	}
+	if ( !defined $Weight ) {
+		$Weight = 1;
 	}
 	# origin tag support
 	$iploc = $xmlconf->{conf}->[$i]->{origin}->[0];
@@ -323,18 +320,18 @@ sub xml_update {
 			$PF = 'Masq';
 		}
 		while ( $xmlconf->{conf}->[$i]->{port}->[$p] ) {
-			$PORT = $xmlconf->{conf}->[$i]->{port}->[$p];
-			&syslog_input('notice', "$IVM Port:$PORT Proto:$PROTOCOL $iploc to $DEST_IP");
-			$RET = &update_ipvs($iploc,$DEST_IP,$PORT, $LB_SCHED,$LOCAL_WEIGHT,$PF);
+			$Port = $xmlconf->{conf}->[$i]->{port}->[$p];
+			&syslog_input('notice', "$IVM Port:$Port Proto:$Proto $iploc to $Dip");
+			$RET = &update_ipvs($iploc, $Dip, $Port, $Proto, $LBA, $Weight, $PF);
 			if ( $RET == 0 ) {
 				&syslog_input('err', "$IVM failed");
 				last;
 			}else{
 				&syslog_input('notice', "$IVM success");
 				if ( $VERBOSE eq 1 ) {
-					print "$IVM Port:$PORT Proto:$PROTOCOL $iploc to $DEST_IP\n";
-					print "Sched:$LB_SCHED Rank:$LOCAL_WEIGHT via $PF";
-					if ( $Svcip eq $ip ) {
+					print "$IVM Port:$Port Proto:$Proto $iploc to $Dip\n";
+					print "Sched:$LBA Rank:$Weight via $PF";
+					if ( $Svcip eq $iploc ) {
 						print " Int:$IFACE";
 					}
 					print "\n";
