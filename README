@@ -1,7 +1,7 @@
 iptoip
 
 (c) 2001 Lenny Cartier (l.cartier@free.fr) / https://github.com/lennycartier/iptoip
-(c) 2013-2018 Nathan Gibbs <nathan@cmpublishers.com>
+(c) 2013-2019 Nathan Gibbs <nathan@cmpublishers.com>
 Licensed under the terms of the GNU GPL (see COPYING)
 
 A tool designed to setup and maintain the IPVS table on Linux hosts.
@@ -33,6 +33,6 @@ On debien hosts, creating a symlink to iptoip in /etc/network/if-up.d can
 accomplish this.
 
 BUGS:
-Report bugs or suggestions to <nathan@cmpublishers.com>
+Please submit at: https://github.com/lennycartier/iptoip/issues
 
-# revised 12/31/2018
+# revised 2/7/2019

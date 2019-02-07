@@ -5,7 +5,7 @@
 # iptoip, v 0.3.2 ( devel )
 #
 # Copyright (C) 2001 Lenny Cartier (l.cartier@free.fr)
-# Additional Code Mangling Copyright (C) 2013-2018 Nathan Gibbs <nathan@cmpublishers.com>
+# Additional Code Mangling Copyright (C) 2013-2019 Nathan Gibbs <nathan@cmpublishers.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ my $i = 0;
 my $host = hostname();
 my ($Svcip, $error, $RET, $xmlconf);
 my $help = 0;
-my $ident = '[iptoip]';
+my $ident = 'iptoip';
 my $xmlarg = '';
 # Flags
 my $DEBUG = 0;
@@ -58,7 +58,7 @@ GetOptions(
 $help && die <<END;
 
 iptoip-0.3.2 (devel), Copyright (C) 2001 Lenny Cartier
-                                (C) 2013-2018 Nathan Gibbs
+                                (C) 2013-2019 Nathan Gibbs
 iptoip comes with ABSOLUTELY NO WARRANTY;
 This is free software, and you are welcome to
 redistribute it under the terms of the GNU GPL.
