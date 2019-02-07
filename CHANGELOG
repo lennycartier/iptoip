@@ -1,3 +1,12 @@
+02-07-2019
+	0.3.3
+	Complete install script.
+	Documentation updates.
+	Improved error reporting & logging.
+	Support for multiple VE service IPs.
+	Control use of RFC1918 IPs as VE service IPs.
+	Various code improvements.
+
 12-17-2014
 	0.3.2
 	Finished code rewrite.

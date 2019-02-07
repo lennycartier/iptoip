@@ -5,4 +5,5 @@ Nathan's TODO
 - Reduce the number of system calls in the script.
 	Reduce dependencies on underlying OS commands.
 	Do as much in perl as possible.
+- Add connection threshold support.
 
