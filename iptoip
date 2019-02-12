@@ -30,56 +30,52 @@ use Sys::Syslog;
 use XML::Simple;
 use Socket;
 require 'sys/ioctl.ph';
-# Kill UTF-8
-use bytes;
+use bytes; # Kill UTF-8
 
 # Global Vars
+my $Release = '0.3.3 (devel)';
+my %opt;
 my $i = 0;
 my $host = hostname();
 my ($Svcip, $error, $RET, $xmlconf);
-my $help = 0;
-my $ident = 'iptoip';
-my $xmlarg = '';
-# Flags
-my $DEBUG = 0;
+my $ME;
+($ME = $0) =~ s-.*/--;
+my $ident = $ME;
+my $usage = "$ME [-d debug-level] [-f config-file] [-h]\n";
+# Formats
+my $fmtA = "%-31s (C) %-9s %-14s\n";
+my $fmtB = " -%1s|--%4s\t%-12s.\n";
 
 # Configuration Vars
 my ( $BYPASS_CHECK, $IFACE, $LOGFILE, $RFC1918, $SYSLOG, $VERBOSE );
-# Conf check Vars
-my ( $ConfBC, $xmlOK, $xmlEr );
+my ( $ConfBC, $xmlOK, $xmlEr ); # Conf check Vars
 
-## Inline Options #########################################
+# Parse the commandline, if any.
+GetOptions(\%opt, "debug:i", "file=s", "help") || die $usage;
+my $DEBUG = $opt{'debug'} || 0;
+my $xmlarg = $opt{'file'} || '/etc/iptoip.xml';
+my $help = $opt{'help'} || 0;
 
-GetOptions(
-	"f|file=s" => \$xmlarg, 
-	"h|help" => \$help 
-);
-
-$help && die <<END;
-
-iptoip-0.3.3 (devel), Copyright (C) 2001 Lenny Cartier
-                                (C) 2013-2019 Nathan Gibbs
-iptoip comes with ABSOLUTELY NO WARRANTY;
-This is free software, and you are welcome to
-redistribute it under the terms of the GNU GPL.
-
-iptoip - Update an ipvsadm table
-
-Usage: iptoip -f -h --file --help
- -f|--file		Use specified configuration file
- -h|--help		Show this help message
-
-END
+if ( $help ) {
+	printf ($fmtA, "\n$ME-$Release, Copyright", '2001', 'Lenny Cartier');
+	printf ($fmtA, '','2013-2019', 'Nathan Gibbs');
+	print "$ME comes with ABSOLUTELY NO WARRANTY;\n";
+	print "This is free software, and you are welcome to\n";
+	print "redistribute it under the terms of the GNU GPL.\n\n";
+	print "$ME - Setup the IPVS table.\n\n";
+	print "Usage: $ME -d -f -h --debug --file --help\n";
+	printf ($fmtB, 'd', 'debug', 'Set debug level' );
+	printf ($fmtB, 'f', 'file', 'Use specified configuration file' );
+	printf ($fmtB, 'h', 'help', 'Show this help message' );
+	print "\n";;
+	exit;
+}
 
 ###########################################################
 
 # Setup XML Parser. Array-ize everything.
 my $xs = XML::Simple->new(ForceArray => 1);
 
-# Config setup.
-if ( $xmlarg eq '' ) {
-	$xmlarg = '/etc/iptoip.xml'
-}
 # Check Conf File Sanity.
 $xmlOK = 0;
 if ( -e $xmlarg ) {

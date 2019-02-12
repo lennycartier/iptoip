@@ -1,14 +1,14 @@
 .\" $Id$
-.TH iptoip "8" "February 07, 2019" "iptoip 0.3.3"
+.TH iptoip "8" "February 11, 2019" "iptoip 0.3.3"
 .\" disable hyphenation
 .nh
 .\" disable justification (adjust text to left margin only)
-.ad l
-.SH NAME
+.ad
+.SH "NAME"
 iptoip \- IPVS table setup utility
-.SH SYNOPSIS
-\fBiptoip\fR [\fB\-f\ \fR\fB\fIconfig\-file\fR\fR] [\fB\-h\fR]
-.SH DESCRIPTION
+.SH "SYNOPSIS"
+\fBiptoip\fR [\fB\-d debug-level\fR] [\fB\-f\ \fR\fB\fIconfig\-file\fR\fR] [\fB\-h\fR]
+.SH "DESCRIPTION"
 .PP
 \fBiptoip\fR is a tool designed to setup and maintain the IPVS table on Linux
 hosts.
@@ -17,7 +17,7 @@ Written in perl and using an XML configuration file in conjunction with the
 \fBipvsadm\fR(8) tool, \fBiptoip\fR maintains the IPVS table configuration across
 reboots or IP address changes.
 .br
-Useful for maintaining an IPVS table on a dynamic IP address or intermittent
+Useful for maintaining an IPVS table on a dynamic IP address or roaming
 connection.
 .PP
 When invoked without arguments,
@@ -26,21 +26,23 @@ will read the default configuration file
 \fI/etc/iptoip.xml\fR, and setup the IPVS table.
 .SH "OPTIONS"
 .TP
-\fB\-f | -\-file\fR \fB\fIconfig\-file\fR
-Use
-\fIconfig\-file\fR
-as the configuration file instead of the default,
+\fB\-d | -\-debug\fR \fIdebug\-level\fR
+Set the debug level to \fIdebug\-level\fR. Debugging traces from \fBiptoip\fR
+become more verbose as the debug level increases.
+.TP
+\fB\-f | -\-file\fR \fIconfig\-file\fR
+Use \fIconfig\-file\fR as the configuration file instead of the default,
 \fI/etc/iptoip.xml\fR.
 .TP
 \fB\-h | -\-help\fR
-Show help message and exits.
-.SH AUTHORS
+Show help message and exit.
+.SH "AUTHORS"
 Lenny Cartier.
 .br
 Nathan Gibbs.
 .SH "REPORTING BUGS"
 Please submit at: https://github.com/lennycartier/iptoip/issues
-.SH COPYRIGHT
+.SH "COPYRIGHT"
 Copyright \(co 2001 Lenny Cartier.
 .br
 Copyright \(co 2013-2019 Nathan Gibbs.
@@ -48,14 +50,13 @@ Copyright \(co 2013-2019 Nathan Gibbs.
 This is free software; see the source for copying conditions. There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE;
 Licensed under the General Public License (GPL).
-.SH FILES
+.SH "FILES"
 .PP
 \fI/etc/iptoip.xml\fR
 .RS 4
 The default configuration file.
 .RE
 .SH "SEE ALSO"
-The LVS web site (http://www.linuxvirtualserver.org/) for more
-documentation about LVS.
+The LVS web site. http://www.linuxvirtualserver.org
 .PP
 \fBiptoip.xml\fR(5), \fBipvsadm\fR(8), the LVS\-HOWTO.
